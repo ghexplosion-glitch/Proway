@@ -1,0 +1,88 @@
+const {chromium}=require('playwright');
+const {spawn}=require('node:child_process');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'test-results');fs.mkdirSync(out,{recursive:true});
+const checks=[],ok=(name,condition)=>{assert(condition,name);checks.push(name);};
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+  const port=Number(process.env.PROWAY_TEST_PORT||4373),server=spawn(process.execPath,['server.mjs'],{cwd:root,env:{...process.env,PORT:String(port)}});
+  await new Promise((resolve,reject)=>{server.stdout.once('data',resolve);server.once('error',reject);});
+  let browser;
+  try{
+    browser=await chromium.launch({headless:true,...(process.env.PROWAY_CHROME?{executablePath:process.env.PROWAY_CHROME}:{})});
+    const context=await browser.newContext({viewport:{width:390,height:1100},acceptDownloads:true}),page=await context.newPage(),errors=[];
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.goto('http://localhost:'+port);await page.locator('[data-action="new-order"]').waitFor();
+    const app=page.locator('#pia-offline-app'),text=()=>app.innerText(),nav=s=>app.locator('[data-screen="'+s+'"]').click(),click=a=>app.locator('[data-action="'+a+'"]').click();
+    const fill=async(id,value)=>{await app.locator(id).fill(value);await app.locator(id).press('Tab');await pause(30);};
+    async function saved(){await pause(300);return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('proway-pedidos',1);r.onsuccess=()=>{const db=r.result,q=db.transaction('snapshots').objectStore('snapshots').get('current');q.onsuccess=()=>{db.close();resolve(q.result?.state)};q.onerror=reject;};r.onerror=reject;}));}
+    async function download(action,name){const wait=page.waitForEvent('download');await click(action);const d=await wait;const file=path.join(out,name||d.suggestedFilename());await d.saveAs(file);return file;}
+    ok('App opens with five clean customer slots',(await saved()).orders.length===5);
+    ok('Private order records are absent from public code',(await saved()).orders.every(r=>r.rows.length===0));
+    await click('new-order');
+    await app.locator('#pia-add-cut').selectOption('Mujer');await fill('#pia-add-qty','2');await fill('#pia-add-name','EJEMPLO');await fill('#pia-add-color','Verde');
+    await app.locator('#pia-add-form button[type="submit"]').click();
+    ok('New order: two pieces',(await text()).includes('2 piezas'));
+    await nav('cobro');ok('Price with VAT remains 1600',(await app.locator('#pia-sale-total').innerText()).includes('1,600.00'));
+    await app.locator('#pia-payer-type').selectOption('PM');
+    ok('Corporate client retention is 17.24',(await app.locator('#pia-retention-total').innerText()).includes('17.24'));
+    ok('Net corporate payment is 1582.76',(await app.locator('#pia-net-total').innerText()).includes('1,582.76'));
+    await app.locator('#pia-payer-type').selectOption('PF');ok('Individual client has no 113-J withholding',await app.locator('#pia-retention-total').count()===0);
+    await app.locator('#pia-payer-type').selectOption('PM');await app.locator('#pia-vat').selectOption('added');
+    ok('VAT-added quote totals 1856',(await app.locator('#pia-sale-total').innerText()).includes('1,856.00'));
+    ok('VAT-added retention is 20',(await app.locator('#pia-retention-total').innerText()).includes('20.00'));
+    await app.locator('#pia-vat').selectOption('included');
+    await fill('#pia-advance','573.75');await fill('#pia-advance-date','2026-10-08');await fill('#pia-advance-isr','6.25');await app.locator('#pia-advance-cfdi').check();await app.locator('#pia-payment-ok').check();
+    await click('resico');await fill('#pia-isr-month','2026-10');
+    ok('Monthly taxable receipt excludes VAT',(await app.locator('#pia-isr-basis').innerText()).includes('500.00'));
+    ok('1% estimated ISR is 5',(await app.locator('#pia-isr-generated').innerText()).includes('5.00'));
+    ok('Documented actual retention credited once',(await app.locator('#pia-isr-credit').innerText()).includes('6.25'));
+    ok('Excess withholding does not produce negative reserve',(await app.locator('#pia-isr-reserve').innerText()).includes('0.00'));
+    await fill('#pia-isr-month','2026-11');ok('Monthly date filter excludes October',(await app.locator('#pia-isr-basis').innerText()).includes('0.00'));await fill('#pia-isr-month','2026-10');
+    await nav('cobro');await fill('[data-price-group="Butarga|M|Mujer|800"]','900');await click('resico');
+    ok('Quote correction preserves previously validated receipt',(await app.locator('#pia-isr-basis').innerText()).includes('500.00'));
+    await app.locator('summary').filter({hasText:'Otros ingresos RESICO'}).click();
+    for(const [amount,rate] of [[24500,'1.00%'],[24500.01,'1.10%'],[49500.01,'1.50%'],[82833.34,'2.00%'],[207833.34,'2.50%']]){await fill('#pia-isr-external-income',String(amount));ok('Correct monthly tax band '+rate,(await app.locator('#pia-isr-rate').innerText())===rate);}
+    await fill('#pia-isr-external-income','0');
+    const before=await saved(),profileId=before.profile.id;await page.reload();await app.locator('[data-action="new-order"]').waitFor();
+    const after=await saved();ok('Orders persist after closing/reloading',after.orders.at(-1).rows[0].qty===2);ok('Same local user survives restart',after.profile.id===profileId);
+    await app.locator('#pia-order').selectOption(String(after.orders.length-1));await nav('pedido');
+    await app.locator('summary').filter({hasText:'Diseño · reemplazar'}).click();
+    await app.locator('#pia-img-front').setInputFiles(path.join(root,'www/logo.png'));await pause(350);
+    ok('Image stored as local data',(await saved()).orders.at(-1).images.front.startsWith('data:image/jpeg;base64,'));
+    await nav('cobro');await click('preview-document');
+    const pdf=await download('run-export','quote.pdf');ok('Real PDF starts with PDF signature',fs.readFileSync(pdf).subarray(0,5).toString()==='%PDF-');
+    await app.locator('[data-format="excel"]').click();const xlsx=await download('run-export','quote.xlsx');ok('Real Excel is a ZIP workbook',fs.readFileSync(xlsx).subarray(0,2).toString()==='PK');
+    await app.locator('#pia-doc-source').selectOption('etiquetas');await app.locator('[data-format="pdf"]').click();await download('run-export','labels.pdf');
+    await app.locator('#pia-doc-source').selectOption('resico');await app.locator('[data-format="pdf"]').click();await download('run-export','isr.pdf');
+    await click('close-document');await nav('tablas');await app.locator('[data-table="respaldo"]').click();const backup=await download('backup','backup.json');
+    const restored=JSON.parse(fs.readFileSync(backup));ok('Full backup contains rows, user and designs',restored.orders.at(-1).rows.length===1&&restored.profile.id===profileId&&restored.orders.at(-1).images.front);
+    const bad=structuredClone(restored);bad.orders.at(-1).rows[0].cut='Otro';await app.locator('#pia-restore-file').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await pause(100);
+    ok('Invalid backup rejected before replacing data',(await text()).includes('No se importó el archivo'));
+    await app.locator('#pia-restore-file').setInputFiles({name:'restore.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(restored))});await app.locator('[data-action="restore-data"]').waitFor();await click('restore-data');
+    ok('Validated restore preserves local user',(await saved()).profile.id===profileId);
+    await click('open-backup');const badRevision=structuredClone(restored);badRevision.revisions[0].id='<img onerror=alert(1)>';
+    await app.locator('#pia-restore-file').setInputFiles({name:'invalid-history.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(badRevision))});await pause(100);
+    ok('Invalid document history rejected without replacing workspace',(await text()).includes('No se importó el archivo')&&(await saved()).profile.id===profileId);
+    await app.locator('#pia-order').selectOption(String(after.orders.length-1));await nav('pedido');await fill('#pia-address','Dirección de prueba');await app.locator('#pia-data-ok').check();
+    await nav('cobro');await app.locator('#pia-confirm').check();await app.locator('#pia-payment-ok').check();
+    await nav('taller');await app.locator('[data-work="diseño"]').click();
+    ok('Production cannot start before approving actual design',await app.locator('[data-action="start"]').isDisabled());await app.locator('#pia-design-ok').check();await click('start');
+    ok('Validated production stores start date',!!(await saved()).orders.at(-1).startDate);
+    await click('release');ok('Printing releases the same order to sewing',(await saved()).orders.at(-1).released&&await app.locator('[data-action="sewn"]').isEnabled());
+    await click('sewn');ok('Sewing releases packing',(await saved()).orders.at(-1).sewn&&await app.locator('[data-action="packed"]').isEnabled());await click('packed');
+    await click('shipped');ok('Shipping requires carrier, tracking and departure date',!(await saved()).orders.at(-1).shipped);
+    await fill('#pia-carrier','Paquetería de prueba');await fill('#pia-guide','PRUEBA-001');await fill('#pia-ship-date','2026-10-08');await click('shipped');
+    await app.locator('#pia-shipment-status').selectOption('Entregado');const delivered=(await saved()).orders.at(-1);
+    ok('Delivery history persists completed department transitions',delivered.delivered&&delivered.packed&&delivered.shipment.events.length===2);
+    await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
+    await context.setOffline(true);await page.reload();await app.locator('[data-action="new-order"]').waitFor();
+    ok('App starts offline with saved orders',(await saved()).orders.at(-1).rows[0].qty===2);
+    await app.locator('#pia-order').selectOption(String(after.orders.length-1));await nav('cobro');await click('preview-document');await app.locator('[data-format="pdf"]').click();await download('run-export','quote-offline.pdf');ok('PDF export works offline',true);
+    await click('close-document');
+    for(const width of [320,390,736]){await page.setViewportSize({width,height:1100});await nav('tablas');await app.locator('[data-table="resico"]').click();const overflow=await page.locator('#proway-pedidos-preview').evaluate(el=>[...el.querySelectorAll('*')].filter(x=>!x.closest('.pia-doc-table-wrap')&&x.getBoundingClientRect().width>0&&x.getBoundingClientRect().right>el.getBoundingClientRect().right+2).length);ok('Mobile layout '+width+'px fits',overflow===0);}
+    await page.setViewportSize({width:390,height:1100});await page.screenshot({path:path.join(out,'resico-mobile.png'),fullPage:true});await page.emulateMedia({colorScheme:'dark'});await page.screenshot({path:path.join(out,'resico-dark.png'),fullPage:true});
+    ok('No JavaScript errors',errors.length===0);
+    fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify({passed:checks.length,checks,errors},null,2));console.log(JSON.stringify({passed:checks.length,errors}));
+  }finally{if(browser)await browser.close();server.kill();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

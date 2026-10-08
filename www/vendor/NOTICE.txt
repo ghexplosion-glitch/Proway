@@ -1,0 +1,8 @@
+Bibliotecas incluidas para funcionar sin conexión:
+
+jsPDF 4.2.1: https://github.com/parallax/jsPDF (licencia MIT)
+jsPDF-AutoTable 5.0.7: https://github.com/simonbengtsson/jsPDF-AutoTable (licencia MIT)
+ExcelJS 4.4.0: https://github.com/exceljs/exceljs (licencia MIT)
+Lucide: https://lucide.dev (licencia ISC)
+
+Los textos de licencia de cada biblioteca se incluyen en este directorio.

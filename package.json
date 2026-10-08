@@ -1,0 +1,9 @@
+{
+  "name": "proway-pedidos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App instalable de pedidos textiles con almacenamiento local",
+  "scripts": {"start":"node server.mjs","test":"node tests/smoke.cjs"},
+  "engines": {"node":">=20"},
+  "devDependencies": {"playwright":"1.62.1"}
+}
