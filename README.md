@@ -53,9 +53,11 @@ La sincronización automática entre equipos y el respaldo automático a Drive n
 
 El código de la app se mantiene en [ghexplosion-glitch/Proway](https://github.com/ghexplosion-glitch/Proway). El archivo privado de pedidos iniciales y los respaldos van separados del repositorio y de la carpeta pública `www`.
 
-Para Cloudflare Pages: conecta el repositorio, usa **Framework preset: None**, comando de compilación vacío y **Build output directory: www**. La app es estática y ya incluye sus bibliotecas para trabajar sin conexión. También puedes usar la carga directa de la carpeta `www` en Pages.
+Para Netlify: en tu cuenta importa el repositorio **Proway** desde GitHub, selecciona la rama **main**, deja vacío el comando de compilación y usa **www** como directorio de publicación. El archivo `netlify.toml` ya conserva esta configuración y permite que el navegador detecte las actualizaciones de la app. La app es estática y ya incluye sus bibliotecas para trabajar sin conexión.
 
-Fuentes: [Cloudflare: HTML estático](https://developers.cloudflare.com/pages/framework-guides/deploy-anything/), [instalación PWA](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable).
+La carpeta local `.netlify` está excluida de Git para mantener separada la configuración de acceso al proyecto. Publicar consume los créditos incluidos en tu plan de Netlify; comprueba el saldo en **Usage & billing**.
+
+Fuentes: [Netlify: configuración](https://docs.netlify.com/build/configure-builds/file-based-configuration/), [instalación PWA](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable).
 
 ## Ejecutar y comprobar el código
 
