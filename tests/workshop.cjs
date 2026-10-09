@@ -1,0 +1,78 @@
+const {chromium}=require('playwright'),{spawn}=require('node:child_process');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'test-results');fs.mkdirSync(out,{recursive:true});
+const checks=[],ok=(name,value)=>{assert(value,name);checks.push(name);};
+// Simulates the JSONB representation and latency of the cloud, without real accounts or orders.
+const mockSDK=`(()=>{
+ const jsonb=v=>Array.isArray(v)?v.map(jsonb):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().reverse().map(k=>[k,jsonb(v[k])])):v;
+ const uid='00000000-0000-4000-8000-000000000001',workspace='00000000-0000-4000-8000-000000000002';
+ const cloud=window.__cloud={remote:JSON.parse(localStorage.getItem('mock-cloud')||'null'),writes:0,pulls:0,delay:0};
+ const session=()=>({user:{id:uid,email:'test@example.invalid'}});
+ window.supabase={createClient:()=>({auth:{signInWithPassword:async()=>{localStorage.setItem('mock-session','1');return {data:{session:session()}};},getSession:async()=>({data:{session:localStorage.getItem('mock-session')?session():null}}),signOut:async()=>{localStorage.removeItem('mock-session');return {};}},rpc:(name,args)=>({abortSignal:async()=>{
+   if(cloud.delay)await new Promise(r=>setTimeout(r,cloud.delay));
+   const {action,payload:p}=args;let data;
+   if(action==='memberships')data=[{id:workspace}];
+   else if(action==='members')data=[];
+   else if(action==='sync'){cloud.pulls++;const r=cloud.remote;data={role:'admin',displayName:'Prueba',name:'Equipo de prueba',orders:r.orders.filter(o=>(p.versions[o.id]||0)<o.version).map(jsonb),settings:(p.settingsVersion||0)<r.settingsVersion?jsonb(r.settings):null,settingsVersion:r.settingsVersion,events:[]};}
+   else if(action==='save_settings'){cloud.writes++;cloud.remote.settings={...cloud.remote.settings,...p.patch};cloud.remote.settingsVersion++;data={ok:true,id:'settings',version:cloud.remote.settingsVersion,data:jsonb(cloud.remote.settings)};}
+   else if(action==='save_order'){cloud.writes++;let o=cloud.remote.orders.find(o=>o.id===p.orderId);if(!o){o={id:p.orderId,data:{},version:0};cloud.remote.orders.push(o);}o.data={...o.data,...p.patch};o.version++;data={ok:true,id:o.id,version:o.version,data:jsonb(o.data)};}
+   else throw Error('Unexpected mock action '+action);
+   localStorage.setItem('mock-cloud',JSON.stringify(cloud.remote));return {data};
+ }})})};
+})();`;
+(async()=>{
+ const port=4391,server=spawn(process.execPath,['server.mjs'],{cwd:root,env:{...process.env,PORT:String(port)}});await new Promise(r=>server.stdout.once('data',r));let browser;
+ try{
+  browser=await chromium.launch({headless:true,executablePath:process.env.PROWAY_CHROME});const context=await browser.newContext({viewport:{width:390,height:1100},acceptDownloads:true,serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await context.route('**/vendor/supabase.min.js',route=>route.fulfill({contentType:'application/javascript',body:mockSDK}));
+  await page.goto('http://localhost:'+port);await page.locator('[data-action="new-order"]').waitFor();
+  async function saved(){await page.evaluate(()=>ProwayPlatform.flush());return page.evaluate(async()=>{const d=JSON.parse(localStorage.getItem('proway-active-account-v1')||'null'),name=d?'proway-equipo-'+d.workspace+'-'+d.userId+'-'+d.role:'proway-pedidos';return new Promise(resolve=>{const q=indexedDB.open(name,1);q.onsuccess=()=>{const db=q.result,r=db.transaction('snapshots').objectStore('snapshots').get('current');r.onsuccess=()=>{resolve(r.result.state);db.close();};};});});}
+  async function download(action,file){const wait=page.waitForEvent('download');await page.locator(action).click();const d=await wait;await d.saveAs(path.join(out,file));return d;}
+  async function workbook(file){const bytes=Array.from(fs.readFileSync(path.join(out,file)));return page.evaluate(async bytes=>{const wb=new ExcelJS.Workbook();await wb.xlsx.load(new Uint8Array(bytes));return wb.worksheets.map(s=>({name:s.name,rows:s.getSheetValues(),green:s.getCell('A8').fill?.fgColor?.argb}));},bytes);}
+  const state=await saved(),row=(id,product,cut,qty,printed,special='')=>({id,product,size:'M',cut,qty,printed,color:'Rojo',design:'Diseño de prueba',placement:'Espalda',special});
+  state.orders[0].name='Prueba Sonora';state.orders[0].rows=[row(1,'Butarga','Hombre',3,'LUCÍA')];state.orders[0].advance=700;state.orders[0].advanceDate='2026-10-09';state.orders[0].paymentOk=true;state.orders[0].advanceRecord={date:'2026-10-09',amount:700,retention:0,documented:false,simulated:false};state.orders[0].payerType='PF';
+  state.orders[1].name='Prueba Jaguares';state.orders[1].rows=[row(2,'Playera','Mujer',2,'ANA',900)];state.orders[1].advance=300;state.orders[1].advanceDate='2026-10-09';
+  state.rates=[{product:'Butarga',size:'M',cut:'Hombre',cost:100},{product:'Playera',size:'M',cut:'Mujer',cost:70}];state.expenses=[];
+  await page.locator('[data-action="open-backup"]').click();await page.locator('#pia-restore-file').setInputFiles({name:'old-orders.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(state))});await page.locator('[data-action="restore-data"]').click();
+  await page.locator('[data-screen="tablas"]').click();await page.locator('[data-table="proveedor"]').click();await page.locator('[data-batch-order="C2"]').check();
+  ok('Several clients form one supplier bill',(await page.locator('#pia-batch-total').innerText()).includes('490.00'));
+  ok('Supplier detail retains Hombre and Mujer',await page.evaluate(s=>{const a=ProwayExtras.supplierDocument(s.orders[0],s),b=ProwayExtras.supplierDocument(s.orders[1],s);return a.rows[0][3]==='Hombre'&&b.rows[0][3]==='Mujer'&&a.rows[0][6]===10;},await saved()));
+  await page.locator('#pia-batch-mode').selectOption('added');ok('Combined supplier VAT totals 568.40',(await page.locator('#pia-batch-total').innerText()).includes('568.40'));
+  const bd=await download('[data-finance="batch-excel"]','batch.xlsx');ok('Combined export names both clients',bd.suggestedFilename().includes('Prueba-Sonora-Prueba-Jaguares'));
+  const batch=await workbook('batch.xlsx'),doc=batch.find(s=>s.name==='Documento');ok('Combined workbook separates clients and has editable formulas',batch.some(s=>s.name==='Totales por cliente')&&JSON.stringify(doc.rows).includes('Prueba Jaguares')&&JSON.stringify(doc.rows).includes('ROUND(E'));
+  await download('[data-finance="batch-pdf"]','batch.pdf');ok('Combined supplier PDF is a real PDF',fs.readFileSync(path.join(out,'batch.pdf')).subarray(0,5).toString()==='%PDF-');
+  await page.locator('[data-table="finanzas"]').click();ok('All-order quoted total includes general and special prices',(await page.locator('#pia-finance-quoted').innerText()).includes('4,200.00'));
+  ok('Only validated cash is counted as received',(await page.locator('#pia-finance-cash').innerText()).includes('700.00'));
+  ok('Real balance excludes an unvalidated advance',(await page.locator('#pia-finance-balance').innerText()).includes('3,500.00'));
+  ok('Quoted remainder subtracts supplier forecasts',(await page.locator('#pia-finance-remaining').innerText()).includes('3,710.00'));
+  async function expense(category,amount){await page.locator('#pia-expense-form [name=category]').selectOption(category);await page.locator('#pia-expense-form [name=amount]').fill(String(amount));await page.locator('#pia-expense-form [name=note]').fill('Gasto de prueba');await page.locator('#pia-expense-form button').click();}
+  await expense('Hilos',200);await expense('Tela',100);ok('Expense entries reduce cash without deducting forecasts twice',(await page.locator('#pia-finance-expenses').innerText()).includes('300.00')&&(await page.locator('#pia-finance-available').innerText()).includes('400.00'));
+  await download('[data-finance="finance-excel"]','finance.xlsx');const finance=await workbook('finance.xlsx');ok('Accounting export contains actual incomes, expenses and per-client totals',finance.some(s=>s.name==='Totales por cliente')&&JSON.stringify(finance).includes('Hilos')&&JSON.stringify(finance).includes('Anticipo'));
+  await download('[data-finance="finance-pdf"]','finance.pdf');
+  ok('Missing tariffs remain pending in combined and financial totals',await page.evaluate(s=>{s.rates=[];const t=ProwayFinance.totals(s,{records:[],orders:s.orders.map(o=>({id:o.id,name:o.name,total:0,subtotal:0,balance:0,quantity:0}))});return t.sublimation===null&&t.remaining===null;},await saved()));
+  await page.locator('[data-screen="taller"]').click();await page.locator('[data-work="diseño"]').click();const dd=await download('[data-action="design-excel"]','design-names.xlsx');const design=await workbook('design-names.xlsx'),names=design.find(s=>s.name==='Nombres para diseño');ok('Design Excel places printable names in the first column',names.rows[3][1]==='LUCÍA'&&names.rows[3][2]===3);
+  ok('Department filename identifies the client',dd.suggestedFilename().includes('Prueba-Sonora')&&dd.suggestedFilename().includes('diseno'));
+  for(const width of [320,390,1024]){await page.setViewportSize({width,height:1100});const left=await page.locator('.pia-side-menu').boundingBox(),right=await page.locator('.pia-work-content').boundingBox();ok('Department menu is on the left at '+width+'px',left.x+left.width<=right.x+1);ok('Department page fits at '+width+'px',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+  await page.setViewportSize({width:390,height:1100});await page.screenshot({path:path.join(out,'departments-left-mobile.png'),fullPage:true});
+  await page.locator('[data-screen="pedido"]').click();const td=await download('[data-action="customer-template"]','empty-client.xlsx'),template=await workbook('empty-client.xlsx');ok('Empty client file contains no existing orders or workshop prices',td.suggestedFilename()==='Proway-Pedido-cliente-vacio.xlsx'&&!JSON.stringify(template).includes('Prueba Sonora')&&!JSON.stringify(template).includes('Sublimación unit.'));
+  ok('Customer inputs are green and contain only two cuts',template[0].green==='FFE2F3E8');
+  const filled=await page.evaluate(async bytes=>{const w=new ExcelJS.Workbook();await w.xlsx.load(new Uint8Array(bytes));const s=w.getWorksheet('Pedido cliente');s.getCell('B1').value='Cliente ejemplo';s.getCell('B2').value='Contacto ejemplo';s.getCell('B3').value='5550001111';s.getCell('B4').value='Dirección ejemplo';s.getRow(8).values=['Playera','M','Mujer',2,'MARÍA','Azul','Modelo A'];return Array.from(new Uint8Array(await w.xlsx.writeBuffer()));},Array.from(fs.readFileSync(path.join(out,'empty-client.xlsx'))));
+  await page.locator('#pia-order').selectOption('4');await page.locator('[data-action="import-order"]').click();await page.locator('#pia-import-file').setInputFiles({name:'customer-filled.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from(filled)});await page.locator('[data-action="confirm-import"]').click();const imported=(await saved()).orders[4];ok('Filled template imports customer data and names once',imported.name==='Cliente ejemplo'&&imported.contact==='Contacto ejemplo'&&imported.phone==='5550001111'&&imported.address==='Dirección ejemplo'&&imported.rows[0].printed==='MARÍA');
+  const manifest=await page.evaluate(async()=>await (await fetch('manifest.webmanifest')).json());ok('Manifest uses versioned white icons',manifest.background_color==='#ffffff'&&manifest.icons.every(i=>i.src.includes('icon-white')));
+  ok('Installed app icon has opaque white background',await page.evaluate(async()=>{const image=new Image();image.src='icons/icon-white-192.png';await image.decode();const c=document.createElement('canvas');c.width=c.height=192;c.getContext('2d').drawImage(image,0,0);return [...c.getContext('2d').getImageData(0,0,1,1).data].every(x=>x===255);}));
+  // Enter an isolated fake team and reproduce repeated server JSONB round trips.
+  const fixture=await saved();await page.evaluate(s=>{__cloud.remote={orders:s.orders.map(o=>({id:o.id,data:o,version:1})),settings:ProwaySyncCore.settings(s),settingsVersion:1};localStorage.setItem('mock-cloud',JSON.stringify(__cloud.remote));},fixture);
+  await page.locator('#pia-team').click();await page.locator('#pia-team-auth [name=email]').fill('test@example.invalid');await page.locator('#pia-team-auth [name=password]').fill('Test-only-password');await page.locator('#pia-team-auth button').click();await page.waitForFunction(()=>ProwayCollaboration.getRole()==='admin');await page.waitForFunction(()=>document.getElementById('pia-cloud-status').textContent.includes('Sincronizado'));await page.locator('[data-team="close"]').click();
+  await page.locator('#pia-order').selectOption('0');await page.locator('[data-screen="taller"]').click();await page.locator('[data-work="diseño"]').click();await page.locator('summary').filter({hasText:'Qué imprimir'}).click();
+  await page.evaluate(()=>{window.__repaints=0;window.__observer=new MutationObserver(()=>__repaints++);__observer.observe(document.getElementById('pia-main'),{childList:true});});
+  await page.evaluate(async()=>{for(let i=0;i<6;i++)await ProwayCollaboration.sync(true);});
+  ok('Unchanged cloud pulls never replace the department screen',await page.evaluate(()=>__repaints===0));ok('Cloud key reordering does not create repeated writes',await page.evaluate(()=>__cloud.writes===0));ok('Expanded long list stays open after synchronization',await page.locator('details').filter({has:page.locator('summary').filter({hasText:'Qué imprimir'})}).getAttribute('open')!==null);
+  // A remote request already in flight may finish while an image is being decoded.
+  await page.evaluate(()=>{__cloud.remote.orders[0].data.contact='Edición remota';__cloud.remote.orders[0].version++;__cloud.delay=180;window.__sync=ProwayCollaboration.sync(true);const original=ProwayPlatform.optimizeImage;ProwayPlatform.optimizeImage=async data=>{await new Promise(r=>setTimeout(r,350));return original(data);};});
+  await page.waitForTimeout(40);await page.locator('#pia-img-front').setInputFiles(path.join(root,'www/logo.png'));await page.waitForFunction(()=>document.getElementById('pia-feedback').textContent.includes('Imagen guardada'));await page.evaluate(async()=>{await __sync;__cloud.delay=0;});
+  const afterUpload=await saved();ok('Image survives a concurrent remote change',afterUpload.orders[0].images.front.startsWith('data:image/jpeg')&&afterUpload.orders[0].contact==='Edición remota');
+  await page.evaluate(()=>ProwayCollaboration.sync(true));ok('Image and shared expense records synchronize',await page.evaluate(()=>__cloud.remote.orders[0].data.images.front?.startsWith('data:image/jpeg')&&__cloud.remote.settings.expenses.length===2));
+  await page.reload();await page.waitForFunction(()=>ProwayCollaboration.getRole()==='admin');const restart=await saved();ok('Restart preserves orders, expenses and the uploaded image',restart.orders.length===5&&restart.expenses.length===2&&restart.orders[0].images.front);
+  ok('No JavaScript errors in new workflows',errors.length===0);fs.writeFileSync(path.join(out,'workshop-checks.json'),JSON.stringify({passed:checks.length,checks,errors},null,2));console.log(JSON.stringify({passed:checks.length,errors}));
+ }finally{await browser?.close();server.kill();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -229,6 +229,38 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 .pia-team-card{padding:15px;border:1px solid #dbe5de;background:#fff;border-radius:12px;margin:15px 0;}
 .pia-team-dialog .pia-check{display:flex;gap:12px;align-items:center;margin:12px 0;}
 .pia-team-dialog .pia-check input{width:22px;height:22px;flex-shrink:0;accent-color:#176940;}
+
+/* A permanent left menu leaves the current department and its forms easy to find. */
+#pia-offline-app .pia-work-layout{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;margin-top:16px;align-items:start}
+#pia-offline-app .pia-side-menu{position:sticky;top:8px;display:grid;gap:7px;min-width:0}
+#pia-offline-app .pia-side-menu button{display:flex;flex-direction:column;align-items:center;gap:5px;min-height:64px;width:100%;padding:9px 5px;border:1px solid var(--pia-line);border-radius:11px;background:var(--pia-paper);font-size:12px;line-height:1.25;overflow-wrap:anywhere}
+#pia-offline-app .pia-side-menu button[aria-pressed=true]{background:var(--pia-green);border-color:var(--pia-green);color:#fff;font-weight:600}
+#pia-offline-app .pia-side-menu svg{width:20px;height:20px;flex-shrink:0}
+#pia-offline-app .pia-work-content{min-width:0;overflow-wrap:anywhere}
+#pia-offline-app .pia-work-content>.pia-panel:first-child{margin-top:0}
+#pia-offline-app .pia-work-content .pia-art-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+#pia-offline-app .pia-work-content .pia-art{height:230px}
+#pia-offline-app .pia-work-content .pia-fields{grid-template-columns:minmax(0,1fr)}
+#pia-offline-app .pia-work-content .pia-panel{padding:12px}
+#pia-offline-app .pia-work-content .pia-doc-actions{grid-template-columns:minmax(0,1fr)}
+#pia-offline-app .pia-work-content .pia-gates>div{flex-wrap:wrap}
+#pia-offline-app .pia-work-content input[type=file]{overflow:hidden;max-width:100%}
+#pia-offline-app .pia-nav [data-screen=tablas] span{font-size:10px;line-height:1.15}
+#pia-offline-app .pia-batch-actions{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
+#pia-offline-app .pia-batch-actions button,#pia-offline-app .pia-expense button{border:1px solid var(--pia-line);border-radius:8px;background:var(--pia-paper);padding:8px;font-size:12px}
+#pia-offline-app .pia-batch-check{padding:10px 0;border-bottom:1px solid var(--pia-line)}
+#pia-offline-app .pia-batch-check strong{font-size:14px}
+#pia-offline-app .pia-batch-check span{min-width:0}
+#pia-offline-app .pia-expense{display:flex;gap:8px;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--pia-line);padding:12px 0}
+#pia-offline-app .pia-extra-heading{margin-top:24px}
+@media(min-width:720px){
+  #pia-offline-app{max-width:960px}#pia-offline-app .pia-nav{width:min(100%,960px)}
+  #pia-offline-app main{padding:24px}
+  #pia-offline-app .pia-work-layout{grid-template-columns:144px minmax(0,1fr);gap:22px}
+  #pia-offline-app .pia-side-menu button{flex-direction:row;justify-content:flex-start;gap:10px;padding:12px;text-align:left;min-height:52px;font-size:14px}
+  #pia-offline-app .pia-work-content .pia-fields,#pia-offline-app .pia-work-content .pia-art-grid,#pia-offline-app .pia-work-content .pia-doc-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #pia-offline-app .pia-work-content .pia-panel{padding:18px}
+}
 .pia-team-member{padding:12px 0;border-top:1px solid #dbe5de;}
 .pia-team-dialog small{color:#55675d;font-size:13px;display:block;}
 .pia-team-message{padding:12px;background:#fff4df;color:#6d430e;border-radius:9px;overflow-wrap:anywhere;}

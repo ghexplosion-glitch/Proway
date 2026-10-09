@@ -13,4 +13,11 @@ const ack=C.rebase({...local,contact:'Cambio posterior'},local,{...local,sewn:tr
 state.orders[0].images.front='nuevo diseño';next=C.prepare(meta,state,uuid);assert.equal(next.pending.C1.guards.sewn,false,'A design change checks concurrent production progress before resetting it');
 const stored=JSON.parse(JSON.stringify(next));assert.equal(stored.pending.C1.desired.images.front,'nuevo diseño','An offline outbox contains the complete recoverable local copy');
 const dep={...meta,role:'costura',userId:'test-user',events:[],displayName:'Costura',settingsBase:{data:{calendar:state.calendar},version:1}};const view=C.stateFrom({...state,revisions:[{quote:'private'}],jobs:[],exportsMade:[]},dep);assert.equal(view.basePrice,0);assert.deepEqual(view.rates,[]);assert.deepEqual(view.revisions,[],'Department caches contain no financial document archive');
-console.log('Synchronization rules: 10 checks passed');
+function jsonb(value){if(Array.isArray(value))return value.map(jsonb);if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().reverse().map(k=>[k,jsonb(value[k])]));return value;}
+const fresh={...structuredClone(state),expenses:[],orders:[structuredClone(order)]},fromServer={...meta,bases:{C1:{data:jsonb(order),version:1}},settingsBase:{data:jsonb(C.settings(fresh)),version:1}};
+assert.equal(C.equal(order,jsonb(order)),true,'JSONB key order does not represent a data change');
+assert.equal(Object.keys(C.prepare(fromServer,fresh,uuid).pending).length,0,'A real JSONB round trip never creates an endless settings outbox');
+assert.equal(C.equal([{x:1},{x:2}],[{x:2},{x:1}]),false,'Array order still matters for print lists');
+assert.equal(C.equal({x:1,images:{front:'a',back:'b'}},{images:{back:'c',front:'a'},x:1}),false,'An image change is detected despite reordered keys');
+assert.deepEqual(view.expenses,[],'Departments receive no expense records');
+console.log('Synchronization rules: 15 checks passed');

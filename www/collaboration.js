@@ -9,8 +9,13 @@
     const bar=document.querySelector('.pia-connect');if(!bar)return;
     let message=meta?(navigator.onLine?(Object.keys(meta.conflicts||{}).length?'Revisar cambios en conflicto':Object.keys(meta.pending||{}).length+' cambios pendientes'):'Sin conexión · cambios pendientes en este equipo'):'Pedidos guardados en este equipo';
     if(meta&&!Object.keys(meta.pending||{}).length&&navigator.onLine)message=meta.lastSynced?'Sincronizado · '+new Date(meta.lastSynced).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'Conectando al equipo…';
-    bar.innerHTML='<span id="pia-cloud-status" role="status">'+esc(message)+'</span><button type="button" id="pia-team">'+(meta?esc(roles[meta.role]):'Equipo')+'</button>';
-    document.getElementById('pia-team').addEventListener('click',()=>show());
+    if(!bar.querySelector('#pia-cloud-status')){
+      bar.innerHTML='<span id="pia-cloud-status" role="status"></span><button type="button" id="pia-team"></button>';
+      document.getElementById('pia-team').addEventListener('click',()=>show());
+    }
+    const status=bar.querySelector('#pia-cloud-status'),button=bar.querySelector('#pia-team');
+    if(status.textContent!==message)status.textContent=message;
+    const label=meta?roles[meta.role]:'Equipo';if(button.textContent!==label)button.textContent=label;
   }
   function lock(value){locked=value;bridge.lock(value);}
   function info(message){lastMessage=message;badge();if(opened)paint();}
@@ -45,7 +50,11 @@
   function saveDescriptor(){localStorage.setItem(activeKey,JSON.stringify({workspace:meta.workspace,userId:meta.userId,role:meta.role,displayName:meta.displayName,name:meta.name,email:user?.email||meta.email}));localStorage.removeItem('proway-signed-out');}
   function hooks(){ProwayPlatform.setSyncHooks({prepare:state=>C.prepare(meta,state,uuid),committed:next=>{meta=next;badge();schedule();}});}
   function schedule(){clearTimeout(timer);if(meta&&Object.keys(meta.pending||{}).length&&navigator.onLine)timer=setTimeout(()=>sync().catch(e=>info(e.message)),1200);}
-  async function persist(state){bridge.apply(state);await ProwayPlatform.flush();badge();}
+  async function persist(state){
+    const current=bridge.getState();
+    if(!C.equal({...current,savedAt:null},{...state,savedAt:null}))bridge.apply(state);
+    await ProwayPlatform.flush();badge();
+  }
   async function enter(session){
     if(!meta&&!localStorage.getItem(activeKey)&&!localStorage.getItem('proway-signed-out'))legacy=C.clone(bridge.getState());
     user=session.user;
@@ -80,7 +89,8 @@
   }
   async function sync(force=false){
     if(!meta||busy||!navigator.onLine||locked)return;
-    const focused=document.activeElement;if(!force&&document.querySelector('#pia-main')?.contains(focused)&&focused.matches('input:not([type=checkbox]):not([type=file]),textarea')){schedule();return;}
+    if(bridge.isBusy?.()){schedule();return;}
+    const focused=document.activeElement;if(!force&&document.querySelector('#pia-main')?.contains(focused)&&focused.matches('input:not([type=checkbox]),textarea')){schedule();return;}
     busy=true;badge();
     try{
       await ProwayPlatform.flush();
@@ -100,7 +110,7 @@
     }catch(e){if(e.code==='42501'){lock(true);lastMessage='El servidor no autorizó el acceso. Entra de nuevo o consulta al propietario.';}else lastMessage=e.name==='AbortError'?'La conexión tardó demasiado. Los cambios siguen pendientes.':e.message;
       // Preserve validation errors so one invalid operation does not silently disappear.
       if(meta)await ProwayPlatform.flush().catch(()=>{});
-    }finally{busy=false;badge();if(opened)paint();}
+    }finally{busy=false;badge();if(opened&&!document.querySelector('#pia-team-dialog form')?.contains(document.activeElement))paint();}
   }
   async function loadMembers(){members=await rpc('members');if(opened)paint();}
   async function onClick(event){

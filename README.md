@@ -1,4 +1,4 @@
-# Proway Pedidos 1.1
+# Proway Pedidos 1.2
 
 App instalable para trabajar primero en el celular y, más adelante, en la computadora. Pedidos, imágenes, cobros, versiones y avances se guardan en una base local del dispositivo. La colaboración sincroniza los pedidos con el equipo cuando hay conexión.
 
@@ -6,7 +6,7 @@ App instalable para trabajar primero en el celular y, más adelante, en la compu
 
 1. Abre la dirección HTTPS publicada de la app con conexión. Espera a que aparezca **Guardado en este equipo** y a que termine la carga.
 2. En Android usa Chrome → menú → **Instalar app** o **Agregar a pantalla principal**. En iPhone usa Safari → Compartir → **Agregar a pantalla de inicio**.
-3. Abre la app desde su icono. Para colaboración, el propietario usa su invitación privada de primer acceso y crea su cuenta. Los demás entran mediante invitaciones creadas por el propietario en **Equipo**. Para trabajar solo en este dispositivo, puedes importar tu respaldo en **Tablas → Respaldo**.
+3. Abre la app desde su icono. Para colaboración, el propietario usa su invitación privada de primer acceso y crea su cuenta. Los demás entran mediante invitaciones creadas por el propietario en **Equipo**. Para trabajar solo en este dispositivo, puedes importar tu respaldo en **Taller sublimación → Respaldo**.
 4. Comprueba el pedido seleccionado. Después prueba abrir la app en modo avión.
 
 La app está publicada en [proway-pedidos.netlify.app](https://proway-pedidos.netlify.app/). La instalación en un celular requiere HTTPS.
@@ -20,10 +20,21 @@ La app está publicada en [proway-pedidos.netlify.app](https://proway-pedidos.ne
 5. Valida la impresión para pasar a **Costura**, valida la costura para pasar a **Empaque**, comprueba piezas y etiquetas, y libera a **Envío**.
 6. Captura paquetería, guía, fechas y estado. El historial de envío se actualiza manualmente.
 
-El conteo por producto, talla y corte se calcula desde el mismo listado. Las tarifas de sublimación y short conservadas en el respaldo se usan para el costo interno. Los precios y costos se consultan en sus pestañas; las medidas no aparecen en el costeo. **Tablas → Pago de sublimación y corte** reúne el pago del proveedor por producto, talla y corte. Agrega errores o impresiones extra y marca si también requieren corte. Estos extras no aumentan las prendas del cliente. Puedes elegir sin IVA adicional, más IVA o IVA incluido. Una tarifa faltante se muestra como pendiente; completa la tabla antes de pagar. La hoja Excel permite editar cantidades y tarifas y recalcula los importes.
+El conteo por producto, talla y corte se calcula desde el mismo listado. Las tarifas de sublimación y short conservadas en el respaldo se usan para el costo interno. Los precios y costos se consultan en sus pestañas; las medidas no aparecen en el costeo. **Taller sublimación → Pago de sublimación y corte** reúne el pago del proveedor por producto, talla y corte. Agrega errores o impresiones extra y marca si también requieren corte. Estos extras no aumentan las prendas del cliente. Puedes elegir sin IVA adicional, más IVA o IVA incluido. Una tarifa faltante se muestra como pendiente; completa la tabla antes de pagar. La hoja Excel permite editar cantidades y tarifas y recalcula los importes.
+
+## Pagos conjuntos y control de dinero
+
+En **Taller sublimación → Pago de trabajos**, selecciona varios pedidos para sumarlos en un solo pago al proveedor. Elige el IVA del lote y descarga el PDF o Excel; ambos identifican los clientes y el Excel incluye sus totales separados. Descargar no registra un pago.
+
+En **Taller sublimación → Control de dinero** se ven los totales cotizados con y sin IVA, sublimación y corte previstos, lo cobrado y validado, saldos y egresos. Registra pagos reales de hilos, tela, reparaciones, costura, sublimación, envío u otros gastos; puedes asociarlos a un pedido. **Disponible de cobros = cobros validados − egresos registrados**. Los costos previstos no se descuentan otra vez. El restante cotizado después del taller no es una utilidad fiscal. Los egresos no alteran el ISR RESICO.
+
+Los egresos se guardan y sincronizan con la cuenta de administración. Los departamentos no reciben estos datos. El PDF y el Excel del control de dinero incluyen movimientos y una tabla de totales por cliente.
 
 ## Documentos y cliente
 
+- **Pedido → Descargar plantilla vacía para cliente** genera un Excel limpio, con celdas verdes e instrucciones. Al importarlo, también se recuperan cliente, contacto, teléfono y dirección. No incluye precios ni datos del taller.
+- El menú de departamentos queda a la izquierda. **Diseño → Excel para nombres de diseño** descarga una hoja con el nombre en la primera columna para copiarlo fácilmente.
+- Los nombres de los archivos PDF y Excel incluyen el cliente, folio, sección y versión.
 - Cada sección ofrece **Vista previa** y **Exportar** en PDF y Excel. El PDF incluye los registros completos y las imágenes cargadas. Las etiquetas se distribuyen en cuatro columnas.
 - El Excel de cotización permite corregir cantidad y precio en las celdas verdes. Sus importes, IVA, retención y saldo estimado se recalculan con fórmulas.
 - La exportación para Google Sheets descarga un Excel. Con conexión, impórtalo en Sheets para crear una hoja editable.
@@ -34,7 +45,7 @@ El conteo por producto, talla y corte se calcula desde el mismo listado. Las tar
 
 ## RESICO persona física
 
-Proway está configurado como emisor persona física, régimen 626. Completa el nombre fiscal, RFC y código postal reales en **Tablas → Precios**.
+Proway está configurado como emisor persona física, régimen 626. Completa el nombre fiscal, RFC y código postal reales en **Taller sublimación → Precios**.
 
 - Para venta de prendas a persona moral, se estima la retención de ISR del 1.25% sobre el subtotal sin IVA y se muestra el neto a pagar.
 - El control mensual interno calcula ISR sobre los cobros validados sin IVA, con la tabla mensual del artículo 113-E. No descuenta costos de producción.
@@ -58,6 +69,8 @@ Cuando tengas computadora, abre la misma dirección e instala la app desde Chrom
 ## Backend de colaboración
 
 `backend/proway-collaboration.sql` define el esquema privado, la validación del proceso y la API con control de roles. Aplica el SQL en un proyecto propio y configura el URL, la clave **publicable** y el identificador del espacio en `www/cloud-config.js`. El esquema evita acceso directo a tablas desde clientes.
+
+Para actualizar una instalación que ya usa el backend de la versión 1.1, aplica `backend/proway-expenses.sql`. Solo amplía la validación de configuración para egresos; conserva pedidos y permisos. `backend/test-expenses.sql` verifica el cambio en una transacción aislada que termina en rollback.
 
 `backend/proway-cuentas/index.ts` permite crear cuentas únicamente con una invitación válida. La clave de servicio se usa dentro de la función del servidor; nunca va en `www` ni en el repositorio. Despliega esta función con el nombre `proway-cuentas`. No se cambia la configuración de registro de otras aplicaciones del proyecto.
 
@@ -98,6 +111,8 @@ docker compose up --build -d
 Abre `http://localhost:8080`. Docker sirve los archivos; los pedidos siguen guardándose en cada dispositivo. Para instalar y usar el modo sin conexión en teléfonos, publica con HTTPS.
 
 ## Actualizar
+
+La versión 1.2 corrige las recargas provocadas por el orden de claves de JSONB y preserva la imagen cargada cuando llega una edición remota. Usa iconos nuevos con fondo blanco. El sistema del celular puede tardar en renovar el icono instalado; la actualización conserva la base y no requiere desinstalar.
 
 Incrementa la versión del caché en `www/sw.js` en cada publicación. Cuando el dispositivo tenga conexión, detectará la nueva versión y mostrará **Actualizar app**. Ese botón guarda los cambios antes de cargar la actualización; la base local se conserva.
 

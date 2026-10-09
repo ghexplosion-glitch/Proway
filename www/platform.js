@@ -80,7 +80,8 @@
     return d && Array.isArray(d.heads)&&d.heads.length<=30&&d.heads.every(v=>text(v,200)) &&
       Array.isArray(d.rows)&&d.rows.length<=10000&&d.rows.every(r=>Array.isArray(r)&&r.length<=30&&r.every(cell)) &&
       Array.isArray(d.money)&&d.money.every(v=>Number.isInteger(v)&&v>=0&&v<30) &&
-      (!d.summary||(Array.isArray(d.summary)&&d.summary.length<=50&&d.summary.every(r=>Array.isArray(r)&&r.every(cell))));
+      (!d.summary||(Array.isArray(d.summary)&&d.summary.length<=50&&d.summary.every(r=>Array.isArray(r)&&r.every(cell)))) &&
+      (!d.extraTables||(Array.isArray(d.extraTables)&&d.extraTables.length<=5&&d.extraTables.every(t=>text(t.title,100)&&!t.extraTables&&validDocument(t))));
   }
   function validateState(value) {
     if (!value || value.schemaVersion!==1 || !Array.isArray(value.orders) || !value.orders.length || value.orders.length>1000) throw Error('No es un respaldo compatible de Proway.');
@@ -116,6 +117,11 @@
     for(const j of value.jobs)if(!Number.isInteger(j.version)||j.version<1||!text(j.label,1000))throw Error('Enlace del historial inválido.');
     if (!value.profile || !text(value.profile.id,100) || !text(value.profile.name,200)) throw Error('Perfil local inválido.');
     if(value.designs&&(!Array.isArray(value.designs)||value.designs.length>20||value.designs.some(d=>!identifier(d.id)||!text(d.name,100)||!d.images||!image(d.images.front)||!image(d.images.back))))throw Error('Catálogo de diseños inválido.');
+    if(value.expenses!==undefined){
+      const ids=new Set(),categories=['Hilos','Tela','Reparación de máquina','Costura','Sublimación y corte','Envío','Otro'];
+      if(!Array.isArray(value.expenses)||value.expenses.length>10000)throw Error('Registro de egresos inválido.');
+      for(const e of value.expenses){if(!identifier(e.id)||ids.has(e.id)||!number(e.amount)||e.amount<=0||!categories.includes(e.category)||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)||new Date(e.date+'T12:00:00Z').toISOString().slice(0,10)!==e.date||!(e.client===''||identifier(e.client))||!text(e.note,500))throw Error('Egreso inválido.');ids.add(e.id);}
+    }
     return value;
   }
   async function readBackup(file) {
@@ -183,6 +189,10 @@
       doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)&&typeof v==='number'?money(v):clean(v))),styles:{font:'helvetica',fontSize:8,cellPadding:2.4},headStyles:{fillColor:[23,42,61]}});
       y=(doc.lastAutoTable?.finalY||y)+9;
       for(const row of rev.data.summary||[])line(row[0],row[1]);
+      for(const table of rev.data.extraTables||[]){
+        doc.addPage();y=22;doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(clean(table.title+' · '+rev.name),margin,y);y+=8;
+        doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[table.heads.map(clean)],body:table.rows.map(r=>r.map((v,i)=>table.money.includes(i)&&typeof v==='number'?money(v):clean(v))),styles:{font:'helvetica',fontSize:8,cellPadding:2.4},headStyles:{fillColor:[23,105,64]}});y=(doc.lastAutoTable?.finalY||y)+9;
+      }
     }
     const pictures=rev.quote?.images||rev.images;
     if(pictures&&Object.values(pictures).some(Boolean)) {
@@ -222,7 +232,7 @@
     for(const values of d.rows){const row=sheet.addRow(values);row.eachCell((cell,i)=>{cell.font={name:'Arial',size:11};if(d.money.includes(i-1))cell.numFmt='"$"#,##0.00';});if(rev.source==='cotizacion'){row.getCell(6).value={formula:'ROUND(D'+row.number+'*E'+row.number+',2)',result:values[5]};for(const i of [4,5])row.getCell(i).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};}}
     const lastRow=sheet.lastRow.number;sheet.addRow([]);const summaries=new Map();
     for(const values of d.summary||[]){const row=sheet.addRow(values);summaries.set(values[0],row.number);if(typeof values[1]==='number')row.getCell(2).numFmt='"$"#,##0.00';}
-    if(rev.source==='proveedor'&&d.rows.length){
+    if(['proveedor','proveedor_lote'].includes(rev.source)&&d.rows.length){
       for(let n=firstRow;n<=lastRow;n++){
         const r=sheet.getRow(n);r.getCell(8).value={formula:'IF(ISNUMBER(F'+n+'),ROUND(E'+n+'*F'+n+',2),"Tarifa pendiente")',result:d.rows[n-firstRow][7]};
         r.getCell(9).value={formula:'ROUND(E'+n+'*G'+n+',2)',result:d.rows[n-firstRow][8]};
@@ -238,6 +248,13 @@
       formula('IVA','IF(ISNUMBER('+at('Subtotal')+'),'+at('Total a pagar')+'-'+at('Subtotal')+',"Pendiente")');
       sheet.getCell(mode).dataValidation={type:'list',allowBlank:false,formulae:['"Sin IVA adicional,Precios más IVA,IVA incluido"']};sheet.getCell(mode).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};wb.calcProperties.fullCalcOnLoad=true;
       sheet.addRow(['Editar celdas verdes: cantidad, tarifa y corte. Los totales se recalculan en Excel o Google Sheets.']);
+    }
+    if(rev.source==='finanzas'){
+      const at=label=>'B'+summaries.get(label),set=(label,formula)=>{const c=sheet.getCell(at(label));c.value={formula,result:c.value};};
+      set('Cobrado y validado',d.rows.length?'SUM(E'+firstRow+':E'+lastRow+')':'0');
+      set('Egresos registrados',d.rows.length?'SUM(F'+firstRow+':F'+lastRow+')':'0');
+      set('Disponible de cobros',at('Cobrado y validado')+'-'+at('Egresos registrados'));wb.calcProperties.fullCalcOnLoad=true;
+      sheet.addRow(['Control a la fecha de exportación. Al editar ingresos o egresos se recalculan los totales de efectivo.']);
     }
     if(rev.source==='cotizacion'&&d.rows.length&&rev.quote?.showVat===false){
       const at=label=>'B'+summaries.get(label),sum='SUM(F'+firstRow+':F'+lastRow+')';
@@ -266,12 +283,33 @@
       template.columns.forEach(c=>c.width=20);template.getRow(1).font={bold:true};template.views=[{state:'frozen',ySplit:1}];
       const instructions=wb.addWorksheet('Instrucciones');instructions.addRow(['Completa solo la pestaña Pedido cliente.']);instructions.addRow(['Producto: Butarga, Playera o Short. Corte: Hombre o Mujer. Cantidad: entero positivo.']);instructions.addRow(['Guarda el archivo y vuelve a importarlo en la app. El precio final se fija en la cotización de Proway.']);instructions.getColumn(1).width=100;
     }
+    if(rev.source==='diseño'){
+      const names=wb.addWorksheet('Nombres para diseño');names.addRow(['Cliente',rev.name]);names.addRow(['Nombre','Cantidad','Producto','Talla','Corte','Color','Diseño','Indicaciones']);
+      for(const r of d.rows)names.addRow([r[4],r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'']);
+      names.columns.forEach((c,i)=>{c.width=i===0?30:19;c.font={name:'Arial',size:12};});names.getRow(2).font={name:'Arial',bold:true,size:12};names.views=[{state:'frozen',ySplit:2}];names.autoFilter={from:'A2',to:'H'+Math.max(2,names.rowCount)};
+    }
+    for(const table of d.extraTables||[]){
+      const extra=wb.addWorksheet(table.title.slice(0,31));extra.addRow(['Proway',rev.name]);extra.addRow(table.heads);
+      for(const values of table.rows){const row=extra.addRow(values);row.eachCell((c,i)=>{c.font={name:'Arial',size:11};if(table.money.includes(i-1))c.numFmt='"$"#,##0.00';});}
+      extra.columns.forEach(c=>{c.width=22;c.alignment={vertical:'top',wrapText:true};});extra.getRow(2).font={bold:true};extra.views=[{state:'frozen',ySplit:2}];
+    }
     const pictures=rev.quote?.images||rev.images;
     if(pictures&&Object.values(pictures).some(Boolean)){
       const designs=wb.addWorksheet('Diseño');designs.getColumn(1).width=60;let row=1;
       for(const [side,data] of Object.entries(pictures)){if(!data)continue;designs.getCell(row,1).value=side==='front'?'Frente':'Espalda';const img=new Image();img.src=data;await img.decode();const scale=Math.min(400/img.width,400/img.height),mark=wb.addImage({base64:data,extension:data.startsWith('data:image/png')?'png':'jpeg'});designs.addImage(mark,{tl:{col:0,row},ext:{width:img.width*scale,height:img.height*scale}});row+=25;}
     }
     const buffer=await wb.xlsx.writeBuffer();return new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  async function blankCustomerTemplate(){
+    const wb=new ExcelJS.Workbook();wb.creator='Proway';const sheet=wb.addWorksheet('Pedido cliente');
+    for(const label of ['Cliente','Contacto','Teléfono','Dirección']){const row=sheet.addRow([label,'']);sheet.mergeCells(row.number,2,row.number,7);row.getCell(1).font={name:'Arial',bold:true,size:12};row.getCell(2).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};row.height=30;}
+    sheet.addRow(['Llena las celdas verdes. Una fila por nombre, talla y corte.']);sheet.mergeCells('A5:G5');sheet.getRow(5).font={name:'Arial',size:11};
+    sheet.addRow([]);sheet.addRow(['Producto','Talla','Corte','Cantidad','Nombre','Color','Diseño']);
+    sheet.getRow(7).eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176940'}};c.font={name:'Arial',bold:true,size:12,color:{argb:'FFFFFFFF'}};});
+    for(let n=8;n<=107;n++)for(let j=1;j<=7;j++){const c=sheet.getCell(n,j);c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};c.font={name:'Arial',size:12};if(j===1)c.dataValidation={type:'list',allowBlank:true,formulae:['"Butarga,Playera,Short"']};if(j===3)c.dataValidation={type:'list',allowBlank:true,formulae:['"Hombre,Mujer"']};if(j===4)c.dataValidation={type:'whole',operator:'between',allowBlank:true,formulae:[1,10000],showErrorMessage:true,error:'Escribe una cantidad entera de 1 a 10000.'};}
+    sheet.columns.forEach((c,i)=>c.width=i===4?30:19);sheet.views=[{state:'frozen',ySplit:7}];
+    const instructions=wb.addWorksheet('Cómo llenar');for(const text of ['Completa los datos del cliente y las celdas verdes de Pedido cliente.','Producto: Butarga, Playera o Short. Corte: Hombre o Mujer.','Tallas: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, CH, M, G, XG, XXG, XXXG, 4XG o A medida.','Cantidad: entero positivo. Nombre: texto exacto que se imprimirá.','Diseño: nombre o código acordado. Las imágenes se agregan en la app.','Guarda este Excel y envíalo a Proway para confirmar tu pedido.'])instructions.addRow([text]);instructions.getColumn(1).width=95;instructions.getColumn(1).font={name:'Arial',size:12};instructions.getColumn(1).alignment={wrapText:true};
+    return new Blob([await wb.xlsx.writeBuffer()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
   function cellValue(value) { if(value&&typeof value==='object')return value.result??value.text??(value.richText?value.richText.map(x=>x.text).join(''):'');return value??''; }
   async function readExcel(file) {
@@ -322,5 +360,5 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden)flush().catch(()=>{});});
     if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
   }
-  window.ProwayPlatform={load,bindState,changed,flush,switchScope,readAux,setSyncHooks,backup,readBackup,validateState,download,pdf,excel,readExcel,optimizeImage,quoteLink,readQuote,shareFile,install,status};
+  window.ProwayPlatform={load,bindState,changed,flush,switchScope,readAux,setSyncHooks,backup,readBackup,validateState,download,pdf,excel,blankCustomerTemplate,readExcel,optimizeImage,quoteLink,readQuote,shareFile,install,status};
 })();
