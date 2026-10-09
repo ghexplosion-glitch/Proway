@@ -20,4 +20,11 @@ assert.equal(Object.keys(C.prepare(fromServer,fresh,uuid).pending).length,0,'A r
 assert.equal(C.equal([{x:1},{x:2}],[{x:2},{x:1}]),false,'Array order still matters for print lists');
 assert.equal(C.equal({x:1,images:{front:'a',back:'b'}},{images:{back:'c',front:'a'},x:1}),false,'An image change is detected despite reordered keys');
 assert.deepEqual(view.expenses,[],'Departments receive no expense records');
-console.log('Synchronization rules: 15 checks passed');
+const normalized={...structuredClone(fresh),orders:[{...structuredClone(order),additionalDesigns:[]}]};
+assert.equal(Object.keys(C.prepare(fromServer,normalized,uuid).pending).length,0,'Upgrading old orders does not enqueue empty design arrays');
+const upgraded=C.stateFrom(normalized,{...fromServer,userId:'test-user',displayName:'Test'});
+assert.deepEqual(upgraded.orders[0].additionalDesigns,[],'Cloud snapshots normalize optional designs before comparing the screen');
+const designPatch=C.prepare(fromServer,{...fresh,orders:[{...order,additionalDesigns:[{id:'D-test',name:'Azul',images:{front:'a',back:'b'}}]}]},uuid).pending.C1;
+assert.equal(designPatch.guards.sewn,false,'Additional artwork protects concurrent department progress');
+assert.equal(C.guardsFor({released:true},order).additionalDesigns,null,'An old order guard preserves its missing-field representation');
+console.log('Synchronization rules: 19 checks passed');

@@ -1,11 +1,11 @@
 {
   "name": "proway-pedidos",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "Pedidos textiles sin conexión con colaboración por departamento",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node tests/collaboration-core.cjs && node tests/smoke.cjs && node tests/upgrade.cjs && node tests/workshop.cjs"
+    "test": "node tests/collaboration-core.cjs && node tests/smoke.cjs && node tests/upgrade.cjs && node tests/workshop.cjs && node tests/design-labels.cjs"
   },
   "engines": {
     "node": ">=22"

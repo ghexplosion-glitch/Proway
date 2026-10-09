@@ -225,7 +225,11 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 .pia-team-field{display:block;margin:12px 0;}
 .pia-team-field input,.pia-team-field select,.pia-team-field textarea,.pia-team-member select{display:block;padding:11px;margin-top:5px;min-height:44px;width:100%;box-sizing:border-box;background:#eaf7ee;color:#192a23;border:1px solid #c5dfd1;border-radius:9px;font:inherit;}
 .pia-team-field textarea{min-height:110px;overflow-wrap:anywhere;}
-.pia-team-tabs{display:flex;gap:12px;}
+.pia-team-auth-layout{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:start;}
+.pia-team-tabs{display:grid;gap:6px;}
+.pia-team-tabs button{width:100%;font-size:13px;overflow-wrap:anywhere;}
+.pia-team-tabs button[aria-pressed=true]{background:#176940;color:#fff;}
+.pia-team-auth-layout form{min-width:0;}
 .pia-team-card{padding:15px;border:1px solid #dbe5de;background:#fff;border-radius:12px;margin:15px 0;}
 .pia-team-dialog .pia-check{display:flex;gap:12px;align-items:center;margin:12px 0;}
 .pia-team-dialog .pia-check input{width:22px;height:22px;flex-shrink:0;accent-color:#176940;}
@@ -253,6 +257,19 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-batch-check span{min-width:0}
 #pia-offline-app .pia-expense{display:flex;gap:8px;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--pia-line);padding:12px 0}
 #pia-offline-app .pia-extra-heading{margin-top:24px}
+#pia-offline-app .pia-art{background:#fff}
+#pia-offline-app .pia-art-empty{padding:16px;text-align:center;color:var(--pia-secondary);font-size:13px}
+#pia-offline-app .pia-order-design{border-top:1px solid var(--pia-line);padding-top:16px;margin-top:20px}
+#pia-offline-app .pia-design-card button+button{margin-top:8px;background:#176940;color:#fff}
+#pia-offline-app .pia-label-used{background:#f0f2f1;color:#697a70;display:flex;align-items:center;justify-content:center;text-align:center}
+#pia-offline-app .pia-work-content .pia-labels{grid-template-columns:minmax(0,1fr)}
+#pia-offline-app .pia-document-layout{grid-template-columns:62px minmax(0,1fr);gap:9px}
+#pia-offline-app .pia-document-content .pia-doc-sheet{margin-top:0;padding:10px}
+#pia-offline-app .pia-document-content .pia-doc-heading{flex-wrap:wrap;gap:8px}
+#pia-offline-app .pia-document-content .pia-logo-wrap{max-width:100%;width:150px}
+#pia-offline-app .pia-document-content .pia-doc-quote{font-size:10px}
+#pia-offline-app .pia-document-content .pia-doc-quote th,#pia-offline-app .pia-document-content .pia-doc-quote small{font-size:10px}
+#pia-offline-app .pia-document-content .pia-money{font-size:20px}
 @media(min-width:720px){
   #pia-offline-app{max-width:960px}#pia-offline-app .pia-nav{width:min(100%,960px)}
   #pia-offline-app main{padding:24px}
@@ -260,6 +277,10 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
   #pia-offline-app .pia-side-menu button{flex-direction:row;justify-content:flex-start;gap:10px;padding:12px;text-align:left;min-height:52px;font-size:14px}
   #pia-offline-app .pia-work-content .pia-fields,#pia-offline-app .pia-work-content .pia-art-grid,#pia-offline-app .pia-work-content .pia-doc-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
   #pia-offline-app .pia-work-content .pia-panel{padding:18px}
+  #pia-offline-app .pia-work-content .pia-labels{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #pia-offline-app .pia-document-layout{grid-template-columns:144px minmax(0,1fr);gap:22px}
+  #pia-offline-app .pia-document-content .pia-doc-quote,#pia-offline-app .pia-document-content .pia-doc-quote th,#pia-offline-app .pia-document-content .pia-doc-quote small{font-size:12px}
+  #pia-offline-app .pia-document-content .pia-doc-sheet{padding:18px}
 }
 .pia-team-member{padding:12px 0;border-top:1px solid #dbe5de;}
 .pia-team-dialog small{color:#55675d;font-size:13px;display:block;}

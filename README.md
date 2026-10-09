@@ -1,4 +1,4 @@
-# Proway Pedidos 1.2
+# Proway Pedidos 1.3
 
 App instalable para trabajar primero en el celular y, más adelante, en la computadora. Pedidos, imágenes, cobros, versiones y avances se guardan en una base local del dispositivo. La colaboración sincroniza los pedidos con el equipo cuando hay conexión.
 
@@ -16,7 +16,7 @@ La app está publicada en [proway-pedidos.netlify.app](https://proway-pedidos.ne
 1. **Inicio → Crear nuevo pedido.** Completa los campos verdes del cliente, prendas, tallas y corte Hombre o Mujer. El botón del formulario del cliente muestra únicamente su pedido.
 2. **Cobro.** Elige si el cliente verá el desglose de IVA o solo los precios finales, el anticipo y el saldo. La retención de ISR de personas morales se muestra cuando corresponde. Confirma si pagará una persona física o moral. Fija el precio general o el especial por talla y corte. El precio inicial general es $800 con IVA incluido; puedes seleccionar “más IVA”.
 3. Captura el depósito neto y, cuando exista, la retención real por separado. Valida el pago recibido. Los cobros ya validados permanecen en el control fiscal aunque después corrijas la cotización.
-4. **Diseño.** Elige un diseño rápido rojo o azul con vista delantera y trasera, reemplázalo desde la galería y guarda otras parejas de imágenes en el catálogo. Aprueba el diseño y valida pedido, cotización y anticipo. Inicia entonces el plazo de 20 días hábiles.
+4. **Diseño.** Elige las imágenes originales Proway rojo o azul con vista delantera y trasera. Desde Pedido, Cobro o Diseño puedes agregar hasta ocho diseños adicionales a la misma cotización, nombrarlos y cargar sus imágenes desde la galería. Escribe el nombre o código en la columna Diseño de las prendas correspondientes. Aprueba el diseño y valida pedido, cotización y anticipo. Inicia entonces el plazo de 20 días hábiles.
 5. Valida la impresión para pasar a **Costura**, valida la costura para pasar a **Empaque**, comprueba piezas y etiquetas, y libera a **Envío**.
 6. Captura paquetería, guía, fechas y estado. El historial de envío se actualiza manualmente.
 
@@ -33,15 +33,23 @@ Los egresos se guardan y sincronizan con la cuenta de administración. Los depar
 ## Documentos y cliente
 
 - **Pedido → Descargar plantilla vacía para cliente** genera un Excel limpio, con celdas verdes e instrucciones. Al importarlo, también se recuperan cliente, contacto, teléfono y dirección. No incluye precios ni datos del taller.
-- El menú de departamentos queda a la izquierda. **Diseño → Excel para nombres de diseño** descarga una hoja con el nombre en la primera columna para copiarlo fácilmente.
+- Los submenús de departamentos, taller, historial, formatos de exportación y acceso al equipo quedan a la izquierda. **Diseño → Excel para nombres de diseño** descarga una hoja con el nombre en la primera columna para copiarlo fácilmente.
 - Los nombres de los archivos PDF y Excel incluyen el cliente, folio, sección y versión.
-- Cada sección ofrece **Vista previa** y **Exportar** en PDF y Excel. El PDF incluye los registros completos y las imágenes cargadas. Las etiquetas se distribuyen en cuatro columnas.
+- Cada sección ofrece **Vista previa** y **Exportar** en PDF y Excel. El PDF incluye los registros completos y las imágenes cargadas. Las etiquetas se distribuyen en cuatro columnas y seis filas, con 24 posiciones por hoja A4.
 - El Excel de cotización permite corregir cantidad y precio en las celdas verdes. Sus importes, IVA, retención y saldo estimado se recalculan con fórmulas.
 - La exportación para Google Sheets descarga un Excel. Con conexión, impórtalo en Sheets para crear una hoja editable.
 - **Compartir cotización** prepara un enlace de consulta cuando la app está publicada en HTTPS. Incluye solo cotización y miniaturas de diseño, y conserva la versión enviada. Quien reciba el enlace puede verlo. El PDF conserva el diseño con mayor resolución.
 - Puedes compartir el PDF mediante el menú del celular o descargarlo. La app abre el menú; tú eliges destinatario y confirmas el envío.
 - La importación acepta `.xlsx`, CSV y TSV. Revisa la hoja y el tratamiento del precio antes de confirmar. Para archivos `.xls` antiguos, guarda primero como `.xlsx`. Una hoja de Google Sheets compartida para lectura puede importarse con conexión; para hojas privadas, descarga el Excel.
 - Al importar un listado en un pedido existente, se conservan sus datos de contacto. Las filas idénticas se omiten al agregar; el código de diseño forma parte de la comparación.
+
+## Etiquetas de varios pedidos
+
+En **Taller → Etiquetas**, marca los pedidos que quieres imprimir juntos. **Seleccionar todos** incluye únicamente pedidos con prendas. La pantalla suma etiquetas y hojas necesarias; descarga un solo PDF o Excel. Cada etiqueta conserva cliente, folio y número de pieza dentro de su propio pedido. Los clientes se acomodan seguidos para aprovechar la hoja.
+
+**Primera etiqueta libre de la hoja** permite comenzar en una posición posterior cuando ya usaste parte de la hoja. Imprime el PDF en A4 a **100 % / tamaño real**. La vista previa identifica las posiciones utilizadas. Se admiten hasta 10,000 etiquetas por descarga.
+
+Los diseños adicionales se guardan en el mismo pedido y aparecen en su cotización, enlace del cliente, PDF, Excel y vistas de los departamentos. Agregar una imagen no duplica prendas ni modifica el precio. Un cambio de diseño requiere volver a aprobarlo y validar la producción.
 
 ## RESICO persona física
 
@@ -70,11 +78,11 @@ Cuando tengas computadora, abre la misma dirección e instala la app desde Chrom
 
 `backend/proway-collaboration.sql` define el esquema privado, la validación del proceso y la API con control de roles. Aplica el SQL en un proyecto propio y configura el URL, la clave **publicable** y el identificador del espacio en `www/cloud-config.js`. El esquema evita acceso directo a tablas desde clientes.
 
-Para actualizar una instalación que ya usa el backend de la versión 1.1, aplica `backend/proway-expenses.sql`. Solo amplía la validación de configuración para egresos; conserva pedidos y permisos. `backend/test-expenses.sql` verifica el cambio en una transacción aislada que termina en rollback.
+Para actualizar una instalación que ya usa el backend de la versión 1.1, aplica `backend/proway-expenses.sql`. Solo amplía la validación de configuración para egresos; conserva pedidos y permisos. `backend/test-expenses.sql` verifica el cambio en una transacción aislada que termina en rollback. Para actualizar de 1.2 a 1.3, aplica `backend/proway-multiple-designs.sql`: amplía los diseños por pedido y su proyección por departamento, conservando los pedidos existentes y permisos. `backend/test-multiple-designs.sql` comprueba compatibilidad, validación, sincronización, permisos y protección ante cambios simultáneos en una transacción aislada.
 
 `backend/proway-cuentas/index.ts` permite crear cuentas únicamente con una invitación válida. La clave de servicio se usa dentro de la función del servidor; nunca va en `www` ni en el repositorio. Despliega esta función con el nombre `proway-cuentas`. No se cambia la configuración de registro de otras aplicaciones del proyecto.
 
-La creación inicial del espacio de trabajo y la invitación del propietario son una operación administrativa separada. Los datos reales, correos, contraseñas, invitaciones y respaldos quedan fuera de GitHub. La carpeta pública solo contiene código, imágenes de muestra y configuración publicable.
+La creación inicial del espacio de trabajo y la invitación del propietario son una operación administrativa separada. Los datos reales, correos, contraseñas, invitaciones y respaldos quedan fuera de GitHub. La carpeta pública solo contiene código, las imágenes Proway aprobadas para el catálogo y configuración publicable.
 
 ## Publicar desde GitHub
 
@@ -112,7 +120,7 @@ Abre `http://localhost:8080`. Docker sirve los archivos; los pedidos siguen guar
 
 ## Actualizar
 
-La versión 1.2 corrige las recargas provocadas por el orden de claves de JSONB y preserva la imagen cargada cuando llega una edición remota. Usa iconos nuevos con fondo blanco. El sistema del celular puede tardar en renovar el icono instalado; la actualización conserva la base y no requiere desinstalar.
+La versión 1.3 añade impresión de etiquetas de varios pedidos, diseños adicionales por cotización y los cuatro archivos originales Proway rojo y azul. Los submenús quedan a la izquierda. Conserva la corrección de recargas por JSONB, la carga de imágenes durante cambios remotos y los iconos con fondo blanco. La actualización no modifica los registros existentes para inicializar diseños vacíos. Los respaldos admiten archivos de hasta 100 MB. El sistema del celular puede tardar en renovar el icono instalado; la actualización conserva la base y no requiere desinstalar.
 
 Incrementa la versión del caché en `www/sw.js` en cada publicación. Cuando el dispositivo tenga conexión, detectará la nueva versión y mostrará **Actualizar app**. Ese botón guarda los cambios antes de cargar la actualización; la base local se conserva.
 

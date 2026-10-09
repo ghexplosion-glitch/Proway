@@ -93,7 +93,7 @@ begin
     'design',coalesce(x->'design','""'::jsonb),'placement',coalesce(x->'placement','""'::jsonb),'special','')), '[]'::jsonb)
     into rowsdata from jsonb_array_elements(d->'rows') x;
   outdata=jsonb_build_object('id',d->'id','name',d->'name','contact','','phone','','address','',
-    'orderDate',d->'orderDate','rows',rowsdata,'images',d->'images','dataOk',d->'dataOk','confirmed',d->'confirmed',
+    'orderDate',d->'orderDate','rows',rowsdata,'images',d->'images','additionalDesigns',coalesce(d->'additionalDesigns','[]'::jsonb),'dataOk',d->'dataOk','confirmed',d->'confirmed',
     'designOk',d->'designOk','paymentOk',d->'paymentOk','startDate',d->'startDate','released',d->'released',
     'sewn',d->'sewn','packed',d->'packed','shipped',d->'shipped','delivered',d->'delivered',
     'advance',0,'advanceDate','','advanceIsr',0,'advanceCfdi',false,'advanceSimulated',false,'advanceRecord',null,
@@ -111,7 +111,7 @@ begin
   if jsonb_typeof(d)<>'object' or octet_length(d::text)>7000000 then raise exception 'Pedido demasiado grande o inválido.'; end if;
   if coalesce(d->>'id','') !~ '^[A-Za-z0-9_-]{1,64}$' or jsonb_typeof(d->'name') is distinct from 'string' or length(d->>'name') not between 1 and 200 then raise exception 'Identificación inválida.'; end if;
   for k in select jsonb_object_keys(d) loop
-    if k<>all(array['id','name','contact','phone','address','orderDate','rows','images','dataOk','confirmed','designOk','advance','advanceDate','advanceIsr','advanceCfdi','advanceSimulated','advanceRecord','payments','payerType','paymentOk','startDate','released','sewn','packed','shipped','delivered','source','sourceNote','vatMode','fiscal','shipment','showVat','supplier']) then raise exception 'Campo de pedido no permitido: %',k; end if;
+    if k<>all(array['id','name','contact','phone','address','orderDate','rows','images','additionalDesigns','dataOk','confirmed','designOk','advance','advanceDate','advanceIsr','advanceCfdi','advanceSimulated','advanceRecord','payments','payerType','paymentOk','startDate','released','sewn','packed','shipped','delivered','source','sourceNote','vatMode','fiscal','shipment','showVat','supplier']) then raise exception 'Campo de pedido no permitido: %',k; end if;
   end loop;
   foreach k in array array['contact','phone','address','orderDate','advanceDate','startDate','source','sourceNote'] loop
     if jsonb_typeof(d->k) is distinct from 'string' or length(d->>k)>4000 then raise exception 'Dato de pedido inválido: %',k; end if;
@@ -146,6 +146,22 @@ begin
       if length(d->'images'->>k)>3000000 or coalesce(d->'images'->>k,'')!~ '^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$' then raise exception 'Imagen inválida.'; end if;
     end if;
   end loop;
+  if d ? 'additionalDesigns' then
+    if jsonb_typeof(d->'additionalDesigns') is distinct from 'array' or jsonb_array_length(d->'additionalDesigns')>8 then raise exception 'Puedes agregar hasta 8 diseños adicionales.'; end if;
+    for x in select value from jsonb_array_elements(d->'additionalDesigns') loop
+      if jsonb_typeof(x) is distinct from 'object' or coalesce(x->>'id','') !~ '^[A-Za-z0-9_-]{1,64}$' or jsonb_typeof(x->'name') is distinct from 'string' or length(trim(x->>'name')) not between 1 and 100 or jsonb_typeof(x->'images') is distinct from 'object' then raise exception 'Diseño adicional inválido.'; end if;
+      for k in select jsonb_object_keys(x) loop
+        if k<>all(array['id','name','images']) then raise exception 'Campo de diseño no permitido.'; end if;
+      end loop;
+      foreach k in array array['front','back'] loop
+        if x->'images'->k is distinct from 'null'::jsonb then
+          if jsonb_typeof(x->'images'->k) is distinct from 'string' or length(x->'images'->>k)>3000000 or coalesce(x->'images'->>k,'')!~ '^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$' then raise exception 'Imagen adicional inválida.'; end if;
+        end if;
+      end loop;
+      if (d->>'designOk')::boolean and x->'images'->>'front' is null and x->'images'->>'back' is null then raise exception 'Agrega las imágenes de todos los diseños antes de aprobar.'; end if;
+    end loop;
+    if (select count(*) from jsonb_array_elements(d->'additionalDesigns'))<>(select count(distinct item->>'id') from jsonb_array_elements(d->'additionalDesigns') item) then raise exception 'Identificador de diseño repetido.'; end if;
+  end if;
   if jsonb_typeof(d->'fiscal') is distinct from 'object' or jsonb_typeof(d->'shipment') is distinct from 'object' or jsonb_typeof(d->'payments') is distinct from 'array' or jsonb_array_length(d->'payments')>1000 then raise exception 'Datos fiscales, pagos o envío inválidos.'; end if;
   foreach k in array array['rfc','name','cp','regime','use','form','method'] loop
     if jsonb_typeof(d->'fiscal'->k) is distinct from 'string' or length(d->'fiscal'->>k)>1000 then raise exception 'Datos fiscales inválidos.'; end if;
@@ -285,9 +301,9 @@ begin
       insert into proway_private.orders(workspace_id,order_id,data,updated_by) values(w,oid,candidate,uid) returning * into stored;
     else
       projected=proway_private.project_order(stored.data,r);
-      resetting=r='diseno' and (patch ? 'images' or patch->'designOk'='false'::jsonb);
+      resetting=r='diseno' and (patch ? 'images' or patch ? 'additionalDesigns' or patch->'designOk'='false'::jsonb);
       for k in select jsonb_object_keys(patch) loop
-        if r='consulta' or r='diseno' and k<>all(array['images','designOk','released']) and not (resetting and k=any(array['startDate','sewn','packed','shipped','delivered']) and patch->>k=any(array['','false'])) or r='costura' and k<>'sewn' or r='empaque' and k<>'packed' or r='envio' and k<>all(array['shipment','shipped','delivered']) then raise exception 'Tu departamento no puede modificar este campo: %',k using errcode='42501'; end if;
+        if r='consulta' or r='diseno' and k<>all(array['images','additionalDesigns','designOk','released']) and not (resetting and k=any(array['startDate','sewn','packed','shipped','delivered']) and patch->>k=any(array['','false'])) or r='costura' and k<>'sewn' or r='empaque' and k<>'packed' or r='envio' and k<>all(array['shipment','shipped','delivered']) then raise exception 'Tu departamento no puede modificar este campo: %',k using errcode='42501'; end if;
         if coalesce(projected->k,'null'::jsonb) is distinct from coalesce(expected->k,'null'::jsonb) and projected->k is distinct from patch->k then conflict=true; end if;
       end loop;
       for k in select jsonb_object_keys(guards) loop
@@ -295,9 +311,10 @@ begin
       end loop;
       if conflict then return jsonb_build_object('conflict',true,'id',oid,'version',stored.version,'data',projected); end if;
       candidate=stored.data||patch;
-      if patch ? 'images' and patch->'images' is distinct from stored.data->'images' then
+      if (patch ? 'images' and patch->'images' is distinct from stored.data->'images') or (patch ? 'additionalDesigns' and patch->'additionalDesigns' is distinct from coalesce(stored.data->'additionalDesigns','[]'::jsonb)) then
         candidate=candidate||jsonb_build_object('designOk',false,'startDate','','released',false,'sewn',false,'packed',false,'shipped',false,'delivered',false);
       end if;
+      if resetting or (patch ? 'images' and patch->'images' is distinct from stored.data->'images') or (patch ? 'additionalDesigns' and patch->'additionalDesigns' is distinct from coalesce(stored.data->'additionalDesigns','[]'::jsonb)) then candidate=jsonb_set(candidate,'{shipment,status}','"Preparación"'::jsonb); end if;
       if r='diseno' and resetting then candidate=candidate||jsonb_build_object('startDate','','released',false,'sewn',false,'packed',false,'shipped',false,'delivered',false); end if;
       -- Only the server appends shipment events; client event arrays cannot rewrite history.
       if patch ? 'shipment' then

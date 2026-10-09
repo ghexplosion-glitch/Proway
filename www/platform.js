@@ -63,11 +63,16 @@
   const text = (x,max=4000) => typeof x==='string' && x.length<=max;
   const identifier = x => text(x,64) && /^[A-Za-z0-9_-]+$/.test(x);
   const image = x => x===null || (text(x,3000000) && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(x));
+  function validDesigns(value){
+    if(value===undefined)return true;
+    if(!Array.isArray(value)||value.length>8)return false;const ids=new Set();
+    return value.every(d=>{if(!d||!identifier(d.id)||ids.has(d.id)||!text(d.name,100)||!d.name.trim()||!d.images||!image(d.images.front)||!image(d.images.back))return false;ids.add(d.id);return true;});
+  }
   function validQuote(q) {
     return !!q && identifier(q.id) && text(q.name,200) && text(q.contact||'',200) &&
       ['pending','PF','PM'].includes(q.payerType) && number(q.advance) && number(q.balance) &&
       Array.isArray(q.rows) && q.rows.length<=10000 && q.tax && q.issuer && q.fiscal && q.images &&
-      image(q.images.front) && image(q.images.back) &&
+      image(q.images.front) && image(q.images.back) && validDesigns(q.additionalDesigns) &&
       q.rows.every(r=>['Butarga','Playera','Short'].includes(r.product)&&['Hombre','Mujer'].includes(r.cut)&&text(r.size,30)&&number(r.price)&&number(r.amount)&&Number.isInteger(r.qty)&&r.qty>=1&&r.qty<=10000) &&
       ['subtotal','iva','total','retention','net'].every(k=>number(q.tax[k])) &&
       ['pending','PF','PM'].includes(q.tax.payerType) && ['included','added'].includes(q.tax.mode) &&
@@ -81,7 +86,8 @@
       Array.isArray(d.rows)&&d.rows.length<=10000&&d.rows.every(r=>Array.isArray(r)&&r.length<=30&&r.every(cell)) &&
       Array.isArray(d.money)&&d.money.every(v=>Number.isInteger(v)&&v>=0&&v<30) &&
       (!d.summary||(Array.isArray(d.summary)&&d.summary.length<=50&&d.summary.every(r=>Array.isArray(r)&&r.every(cell)))) &&
-      (!d.extraTables||(Array.isArray(d.extraTables)&&d.extraTables.length<=5&&d.extraTables.every(t=>text(t.title,100)&&!t.extraTables&&validDocument(t))));
+      (!d.extraTables||(Array.isArray(d.extraTables)&&d.extraTables.length<=5&&d.extraTables.every(t=>text(t.title,100)&&!t.extraTables&&validDocument(t)))) &&
+      (d.labelOffset===undefined||(Number.isInteger(d.labelOffset)&&d.labelOffset>=0&&d.labelOffset<24));
   }
   function validateState(value) {
     if (!value || value.schemaVersion!==1 || !Array.isArray(value.orders) || !value.orders.length || value.orders.length>1000) throw Error('No es un respaldo compatible de Proway.');
@@ -96,6 +102,7 @@
       if (rowCount>10000 || !number(order.advance) || !number(order.advanceIsr||0) || !['pending','PF','PM'].includes(order.payerType)) throw Error('Importes o tipo fiscal inválidos.');
       if(order.advanceRecord&&(!number(order.advanceRecord.amount)||!number(order.advanceRecord.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(order.advanceRecord.date)))throw Error('Anticipo validado inválido.');
       if (!['included','added'].includes(order.vatMode) || !order.images || !image(order.images.front) || !image(order.images.back)) throw Error('IVA o imágenes inválidos.');
+      if(!validDesigns(order.additionalDesigns))throw Error('Diseños adicionales inválidos.');
       if (!Array.isArray(order.payments) || order.payments.some(p=>!text(p.id,64)||!number(p.amount)||!number(p.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(p.date))) throw Error('Registro de pagos inválido.');
       if(order.showVat!==undefined&&typeof order.showVat!=='boolean')throw Error('Desglose de IVA inválido.');
       if(order.supplier&&(!['none','added','included'].includes(order.supplier.mode)||!Array.isArray(order.supplier.extras)||order.supplier.extras.length>500||order.supplier.extras.some(x=>!identifier(x.id)||!['Error','Impresión extra'].includes(x.type)||!['Butarga','Playera','Short'].includes(x.product)||!['Hombre','Mujer'].includes(x.cut)||!text(x.size,30)||!Number.isInteger(x.qty)||x.qty<1||x.qty>10000||typeof x.cutting!=='boolean'||!text(x.note,500))))throw Error('Costos extra inválidos.');
@@ -112,7 +119,7 @@
     if (!value.shortCosts || Object.entries(value.shortCosts).some(([k,a])=>!['1','2','4','6','8','10','12','14','16','18','CH','M','G','XG','XXG','XXXG','4XG','A medida'].includes(k)||!Array.isArray(a)||a.length!==2||a.some(n=>!number(n)))) throw Error('Tarifas de short inválidas.');
     if (!value.isrControl || !/^\d{4}-\d{2}$/.test(value.isrControl.month) || !value.isrControl.external || Object.entries(value.isrControl.external).some(([m,a])=>!/^\d{4}-\d{2}$/.test(m)||!number(a.income)||!number(a.retention))) throw Error('Control mensual ISR inválido.');
     for (const k of ['revisions','jobs','exportsMade','activity']) if (!Array.isArray(value[k]) || value[k].length>10000) throw Error('Historial inválido.');
-    for(const r of value.revisions)if(!identifier(r.id)||!identifier(r.client)||!text(r.name,200)||!Number.isInteger(r.version)||r.version<1||!text(r.time,100)||!validDocument(r.data)||(r.quote&&!validQuote(r.quote))||(r.images&&(!image(r.images.front)||!image(r.images.back))))throw Error('Versión de documento inválida.');
+    for(const r of value.revisions)if(!identifier(r.id)||!identifier(r.client)||!text(r.name,200)||!Number.isInteger(r.version)||r.version<1||!text(r.time,100)||!validDocument(r.data)||(r.quote&&!validQuote(r.quote))||(r.images&&(!image(r.images.front)||!image(r.images.back)))||!validDesigns(r.additionalDesigns))throw Error('Versión de documento inválida.');
     for(const a of value.activity)if(!identifier(a.client)||!text(a.time,100)||!text(a.action,4000))throw Error('Movimiento de historial inválido.');
     for(const j of value.jobs)if(!Number.isInteger(j.version)||j.version<1||!text(j.label,1000))throw Error('Enlace del historial inválido.');
     if (!value.profile || !text(value.profile.id,100) || !text(value.profile.name,200)) throw Error('Perfil local inválido.');
@@ -125,7 +132,7 @@
     return value;
   }
   async function readBackup(file) {
-    if (!file || file.size>25000000) throw Error('Selecciona un respaldo de hasta 25 MB.');
+    if (!file || file.size>100000000) throw Error('Selecciona un respaldo de hasta 100 MB.');
     return validateState(JSON.parse(await file.text()));
   }
   async function optimizeImage(data,max=1200,quality=.85) {
@@ -139,14 +146,14 @@
   const money = x => new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(x);
   function logoData(){const img=document.getElementById('pia-proway-logo');if(!img?.naturalWidth)throw Error('El logo aún no está disponible. Reintenta la descarga.');const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}
   function pdf(rev,logo,title) {
-    const quote = rev.source==='cotizacion', labels = rev.source==='etiquetas';
+    const quote = rev.source==='cotizacion', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
     const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&rev.data.heads.length>6?'landscape':'portrait',unit:'mm',format:'a4'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
-    doc.addImage(logoData(),'PNG',margin,11,58,18.5);
+    if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(clean(title),margin,40);
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean(rev.client+' · '+rev.name+' · v'+rev.version),margin,47);
-    doc.text(new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}),width-margin,18,{align:'right'});
+    doc.text(new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}),width-margin,18,{align:'right'});}
     let y = 54;
     const line = (label,value,bold=false) => {
       if (y>height-23) { doc.addPage(); y=20; }
@@ -174,16 +181,17 @@
       paragraphs('Plazo aproximado: 20 días hábiles desde el inicio validado, después de aprobar pedido, cotización, diseño y anticipo. Tiempo de paquetería por confirmar.');
       if(q.due)paragraphs('Entrega de producción estimada: '+new Date(q.due+'T12:00:00Z').toLocaleDateString('es-MX',{timeZone:'UTC'}));
     } else if(labels) {
-      const rows=rev.data.rows, cols=4, gap=3, cellW=(width-2*margin-3*gap)/4, cellH=43;
+      const rows=rev.data.rows, cols=4, gap=3, cellW=(width-2*margin-3*gap)/4, cellH=42,offset=rev.data.labelOffset||0;
       rows.forEach((r,i)=>{
-        let position=i%20;
-        if(i>0&&position===0){doc.addPage();y=18;}
-        const x=margin+(position%cols)*(cellW+gap), top=y+Math.floor(position/cols)*(cellH+gap);
+        const position=(i+offset)%24;
+        if(i>0&&position===0)doc.addPage();
+        const x=margin+(position%cols)*(cellW+gap), top=13+Math.floor(position/cols)*(cellH+gap);
         doc.setDrawColor(160);doc.rect(x,top,cellW,cellH);
-        const lines=[r[4],r[1]+' / '+r[2]+' / '+r[3],r[5]||'Sin nombre',r[6]||'Color pendiente','Diseño: '+(r[7]||'Pendiente'),rev.client+' · '+r[0]+' de '+rows.length];
+        const lines=[r[4],r[1]+' / '+r[2]+' / '+r[3],r[5]||'Sin nombre',r[6]||'Color pendiente','Diseño: '+(r[7]||'Pendiente')];
         doc.setFontSize(8);doc.setFont('helvetica','normal');
-        let labelY=top+5;
-        for(const text of lines){const wrapped=doc.splitTextToSize(clean(text),cellW-5);doc.text(wrapped.slice(0,2),x+2.5,labelY);labelY+=4*(Math.min(wrapped.length,2))+1;}
+        let labelY=top+4;
+        for(const [n,text] of lines.entries()){const wrapped=doc.splitTextToSize(clean(text),cellW-5).slice(0,n<3?2:1);doc.text(wrapped,x+2.5,labelY);labelY+=3.3*wrapped.length+.7;}
+        doc.setFont('helvetica','bold');doc.text(clean((r[8]||rev.client)+' · '+r[0]+' de '+(r[9]??rows.length)),x+2.5,top+38);
       });
     } else {
       doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)&&typeof v==='number'?money(v):clean(v))),styles:{font:'helvetica',fontSize:8,cellPadding:2.4},headStyles:{fillColor:[23,42,61]}});
@@ -194,26 +202,20 @@
         doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[table.heads.map(clean)],body:table.rows.map(r=>r.map((v,i)=>table.money.includes(i)&&typeof v==='number'?money(v):clean(v))),styles:{font:'helvetica',fontSize:8,cellPadding:2.4},headStyles:{fillColor:[23,105,64]}});y=(doc.lastAutoTable?.finalY||y)+9;
       }
     }
-    const pictures=rev.quote?.images||rev.images;
-    if(pictures&&Object.values(pictures).some(Boolean)) {
-      if(quote){
-        if(y>height-100){doc.addPage();y=22;}
-        doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Diseño propuesto',margin,y);y+=8;
+    const artwork=rev.quote||rev,sets=[{name:'Diseño principal',images:artwork.images},...(artwork.additionalDesigns||[])].filter(d=>d.images&&Object.values(d.images).some(Boolean));
+    if(sets.length){
+      if(!quote){doc.addPage();y=22;}
+      for(const design of sets){
+        const imageHeight=quote?72:95;if(y>height-imageHeight-42){doc.addPage();y=22;}
+        doc.setTextColor(30,40,50);doc.setFont('helvetica','bold');doc.setFontSize(12);
+        const title=doc.splitTextToSize(clean(design.name),width-2*margin);doc.text(title,margin,y);y+=title.length*5+3;
         const cellW=(width-2*margin-12)/2;
         for(const [index,side] of ['front','back'].entries()){
-          const data=pictures[side];if(!data)continue;const x=margin+index*(cellW+12);
-          doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(side==='front'?'Delantero':'Trasero',x,y);
-          const props=doc.getImageProperties(data),scale=Math.min(cellW/props.width,72/props.height);
-          doc.addImage(data,props.fileType,x,y+4,props.width*scale,props.height*scale);
+          const data=design.images[side],x=margin+index*(cellW+12);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(side==='front'?'Delantero':'Trasero',x,y);
+          if(!data)continue;const props=doc.getImageProperties(data),scale=Math.min(cellW/props.width,imageHeight/props.height),w=props.width*scale,h=props.height*scale;
+          doc.addImage(data,props.fileType,x+(cellW-w)/2,y+4,w,h);
         }
-      }else{
-      doc.addPage();y=22;doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Diseño del pedido',margin,y);y+=10;
-      for(const [side,data] of Object.entries(pictures)){if(!data)continue;
-        if(y>height-110){doc.addPage();y=20;}
-        doc.setFontSize(10);doc.text(side==='front'?'Frente':'Espalda',margin,y);y+=5;
-        const props=doc.getImageProperties(data),scale=Math.min((width-2*margin)/props.width,95/props.height);
-        doc.addImage(data,props.fileType,margin,y,props.width*scale,props.height*scale);y+=props.height*scale+14;
-      }
+        y+=imageHeight+16;
       }
     }
     for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);doc.text('Proway · '+(quote?'Cotización sin timbrar':'Documento de trabajo'),margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
@@ -293,10 +295,18 @@
       for(const values of table.rows){const row=extra.addRow(values);row.eachCell((c,i)=>{c.font={name:'Arial',size:11};if(table.money.includes(i-1))c.numFmt='"$"#,##0.00';});}
       extra.columns.forEach(c=>{c.width=22;c.alignment={vertical:'top',wrapText:true};});extra.getRow(2).font={bold:true};extra.views=[{state:'frozen',ySplit:2}];
     }
-    const pictures=rev.quote?.images||rev.images;
-    if(pictures&&Object.values(pictures).some(Boolean)){
+    const artwork=rev.quote||rev,sets=[{name:'Diseño principal',images:artwork.images},...(artwork.additionalDesigns||[])].filter(d=>d.images&&Object.values(d.images).some(Boolean));
+    if(sets.length){
       const designs=wb.addWorksheet('Diseño');designs.getColumn(1).width=60;let row=1;
-      for(const [side,data] of Object.entries(pictures)){if(!data)continue;designs.getCell(row,1).value=side==='front'?'Frente':'Espalda';const img=new Image();img.src=data;await img.decode();const scale=Math.min(400/img.width,400/img.height),mark=wb.addImage({base64:data,extension:data.startsWith('data:image/png')?'png':'jpeg'});designs.addImage(mark,{tl:{col:0,row},ext:{width:img.width*scale,height:img.height*scale}});row+=25;}
+      for(const design of sets){
+        designs.getCell(row++,1).value=design.name;designs.getRow(row-1).font={name:'Arial',bold:true,size:14};
+        for(const side of ['front','back']){
+          let data=design.images[side];if(!data)continue;if(data.startsWith('data:image/webp'))data=await optimizeImage(data);
+          designs.getCell(row,1).value=side==='front'?'Frente':'Espalda';const img=new Image();img.src=data;await img.decode();const scale=Math.min(400/img.width,400/img.height),mark=wb.addImage({base64:data,extension:data.startsWith('data:image/png')?'png':'jpeg'});
+          designs.addImage(mark,{tl:{col:0,row},ext:{width:img.width*scale,height:img.height*scale}});row+=25;
+        }
+      }
+      designs.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     }
     const buffer=await wb.xlsx.writeBuffer();return new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
@@ -320,14 +330,18 @@
   async function quoteLink(q,version=1,issuedAt=new Date().toISOString()) {
     if(!/^https:/.test(location.protocol))throw Error('El enlace al cliente estará disponible cuando la app tenga una dirección HTTPS publicada. Puedes compartir el PDF.');
     const quote=structuredClone(q);quote.documentVersion=version;quote.issuedAt=issuedAt;
-    for(const side of ['front','back'])if(quote.images[side])quote.images[side]=await optimizeImage(quote.images[side],180,.48);
-    const bytes=new TextEncoder().encode(JSON.stringify(quote)),stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
-    const compressed=new Uint8Array(await new Response(stream).arrayBuffer());
-    let binary='';for(const b of compressed)binary+=String.fromCharCode(b);
-    const encoded=btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    if(encoded.length>20000)throw Error('El diseño ocupa demasiado para un enlace. Comparte el PDF con las imágenes.');
-    return location.origin+location.pathname+'#cot='+encoded;
+    // Preserve every design in the client snapshot, reducing thumbnails together if needed.
+    const original=[q.images,...(q.additionalDesigns||[]).map(d=>d.images)],target=[quote.images,...(quote.additionalDesigns||[]).map(d=>d.images)];
+    for(const [max,quality] of [[180,.48],[120,.42],[80,.32],[60,.28]]){
+      for(let i=0;i<original.length;i++)for(const side of ['front','back'])if(original[i][side])target[i][side]=await optimizeImage(original[i][side],max,quality);
+      const bytes=new TextEncoder().encode(JSON.stringify(quote)),stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+      const compressed=new Uint8Array(await new Response(stream).arrayBuffer());let binary='';for(const b of compressed)binary+=String.fromCharCode(b);
+      const encoded=btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+      if(encoded.length<=20000)return location.origin+location.pathname+'#cot='+encoded;
+    }
+    throw Error('Los diseños ocupan demasiado para un enlace. Comparte el PDF con todas las imágenes.');
   }
+
   async function readQuote() {
     const match=location.hash.match(/^#cot=([A-Za-z0-9_-]+)$/);if(!match)return null;
     if(match[1].length>22000)throw Error('Enlace de cotización demasiado grande.');

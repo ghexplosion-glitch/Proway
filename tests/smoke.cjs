@@ -47,7 +47,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     const before=await saved(),profileId=before.profile.id;await page.reload();await app.locator('[data-action="new-order"]').waitFor();
     const after=await saved();ok('Orders persist after closing/reloading',after.orders.at(-1).rows[0].qty===2);ok('Same local user survives restart',after.profile.id===profileId);
     await app.locator('#pia-order').selectOption(String(after.orders.length-1));await nav('pedido');
-    await app.locator('summary').filter({hasText:'Diseño · reemplazar'}).click();
+    await app.locator('summary').filter({hasText:'Diseños del pedido · reemplazar'}).click();
     await app.locator('#pia-img-front').setInputFiles(path.join(root,'www/logo.png'));await pause(350);
     ok('Image stored as local data',(await saved()).orders.at(-1).images.front.startsWith('data:image/jpeg;base64,'));
     await nav('cobro');await click('preview-document');
