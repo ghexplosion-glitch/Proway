@@ -1,9 +1,19 @@
 {
   "name": "proway-pedidos",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "App instalable de pedidos textiles con almacenamiento local",
-  "scripts": {"start":"node server.mjs","test":"node tests/smoke.cjs"},
-  "engines": {"node":">=20"},
-  "devDependencies": {"playwright":"1.62.1"}
+  "description": "Pedidos textiles sin conexión con colaboración por departamento",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node tests/collaboration-core.cjs && node tests/smoke.cjs && node tests/upgrade.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.3"
+  }
 }

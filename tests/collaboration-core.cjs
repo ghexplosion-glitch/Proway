@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict');
+const C=require('../www/collaboration-core.js');
+let counter=0;const uuid=()=>`operation-${++counter}`;
+const order={id:'C1',name:'Prueba',rows:[{id:1,qty:3}],images:{front:null,back:null},dataOk:false,confirmed:false,designOk:false,paymentOk:false,startDate:'',released:false,sewn:false,packed:false,shipped:false,delivered:false,contact:''};
+const state={orders:[structuredClone(order)],basePrice:800,cutPrice:10,rates:[],shortCosts:{},issuer:{},calendar:{saturday:false,extra:''},isrControl:{},designs:[]};
+let meta={role:'admin',bases:{C1:{data:structuredClone(order),version:1}},settingsBase:{data:C.settings(state),version:1},pending:{},conflicts:{}};
+assert.equal(Object.keys(C.prepare(meta,state,uuid).pending).length,0,'Navigation without edits never queues a cloud write');
+state.orders[0].contact='Cliente';let next=C.prepare(meta,state,uuid);assert.equal(next.pending.C1.patch.contact,'Cliente');assert.equal(next.pending.C1.expected.contact,'');
+const stable=C.prepare(next,state,uuid);assert.equal(stable.pending.C1.operationId,next.pending.C1.operationId,'A retry retains its operation ID');
+state.orders[0].contact='Cliente nuevo';const newer=C.prepare(stable,state,uuid);assert.notEqual(newer.pending.C1.operationId,stable.pending.C1.operationId,'New edits cannot reuse an in-flight operation ID');
+const server={...order,sewn:true},local={...order,contact:'Cambio local'};const merged=C.rebase(local,order,server);assert.equal(merged.contact,'Cambio local');assert.equal(merged.sewn,true,'An unrelated remote edit does not erase the local draft');
+const ack=C.rebase({...local,contact:'Cambio posterior'},local,{...local,sewn:true});assert.equal(ack.contact,'Cambio posterior');assert.equal(ack.sewn,true,'Acknowledgement preserves edits made while the request was in flight');
+state.orders[0].images.front='nuevo diseño';next=C.prepare(meta,state,uuid);assert.equal(next.pending.C1.guards.sewn,false,'A design change checks concurrent production progress before resetting it');
+const stored=JSON.parse(JSON.stringify(next));assert.equal(stored.pending.C1.desired.images.front,'nuevo diseño','An offline outbox contains the complete recoverable local copy');
+const dep={...meta,role:'costura',userId:'test-user',events:[],displayName:'Costura',settingsBase:{data:{calendar:state.calendar},version:1}};const view=C.stateFrom({...state,revisions:[{quote:'private'}],jobs:[],exportsMade:[]},dep);assert.equal(view.basePrice,0);assert.deepEqual(view.rates,[]);assert.deepEqual(view.revisions,[],'Department caches contain no financial document archive');
+console.log('Synchronization rules: 10 checks passed');

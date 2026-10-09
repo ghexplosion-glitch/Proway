@@ -1,5 +1,5 @@
-const VERSION='proway-v1.0.0';
-const ASSETS=['./','index.html','app.css','app.js','platform.js','logo.png','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','vendor/lucide.min.js','vendor/jspdf.umd.min.js','vendor/jspdf.plugin.autotable.min.js','vendor/exceljs.min.js'];
+const VERSION='proway-v1.1.0';
+const ASSETS=['./','index.html','app.css','app.js','platform.js','cloud-config.js','collaboration-core.js','collaboration.js','extras.js','logo.png','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','vendor/lucide.min.js','vendor/jspdf.umd.min.js','vendor/jspdf.plugin.autotable.min.js','vendor/exceljs.min.js','vendor/supabase.min.js','designs/rojo-front.svg','designs/rojo-back.svg','designs/azul-front.svg','designs/azul-back.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('proway-')&&key!==VERSION).map(key=>caches.delete(key)))),self.clients.claim()])));
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE_UPDATE')self.skipWaiting();});

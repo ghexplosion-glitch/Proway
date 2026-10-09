@@ -1,26 +1,26 @@
-# Proway Pedidos 1.0
+# Proway Pedidos 1.1
 
-App instalable para trabajar primero en el celular y, más adelante, en la computadora. Pedidos, imágenes, cobros, versiones y avances se guardan en una base local del dispositivo.
+App instalable para trabajar primero en el celular y, más adelante, en la computadora. Pedidos, imágenes, cobros, versiones y avances se guardan en una base local del dispositivo. La colaboración sincroniza los pedidos con el equipo cuando hay conexión.
 
 ## Instalar en el celular
 
 1. Abre la dirección HTTPS publicada de la app con conexión. Espera a que aparezca **Guardado en este equipo** y a que termine la carga.
 2. En Android usa Chrome → menú → **Instalar app** o **Agregar a pantalla principal**. En iPhone usa Safari → Compartir → **Agregar a pantalla de inicio**.
-3. Abre la app desde su icono. En **Tablas → Respaldo**, importa el archivo privado `Proway-pedidos-iniciales.json`, revisa el conteo y pulsa **Restaurar este respaldo**.
+3. Abre la app desde su icono. Para colaboración, el propietario usa su invitación privada de primer acceso y crea su cuenta. Los demás entran mediante invitaciones creadas por el propietario en **Equipo**. Para trabajar solo en este dispositivo, puedes importar tu respaldo en **Tablas → Respaldo**.
 4. Comprueba el pedido seleccionado. Después prueba abrir la app en modo avión.
 
-El código de esta entrega está preparado para publicar. La instalación en un celular requiere una dirección HTTPS; el ZIP por sí solo no crea esa dirección.
+La app está publicada en [proway-pedidos.netlify.app](https://proway-pedidos.netlify.app/). La instalación en un celular requiere HTTPS.
 
 ## Probar un pedido nuevo
 
 1. **Inicio → Crear nuevo pedido.** Completa los campos verdes del cliente, prendas, tallas y corte Hombre o Mujer. El botón del formulario del cliente muestra únicamente su pedido.
-2. **Cobro.** Confirma si pagará una persona física o moral. Fija el precio general o el especial por talla y corte. El precio inicial general es $800 con IVA incluido; puedes seleccionar “más IVA”.
+2. **Cobro.** Elige si el cliente verá el desglose de IVA o solo los precios finales, el anticipo y el saldo. La retención de ISR de personas morales se muestra cuando corresponde. Confirma si pagará una persona física o moral. Fija el precio general o el especial por talla y corte. El precio inicial general es $800 con IVA incluido; puedes seleccionar “más IVA”.
 3. Captura el depósito neto y, cuando exista, la retención real por separado. Valida el pago recibido. Los cobros ya validados permanecen en el control fiscal aunque después corrijas la cotización.
-4. **Diseño.** Reemplaza la imagen de muestra desde la galería. Aprueba el diseño y valida pedido, cotización y anticipo. Inicia entonces el plazo de 20 días hábiles.
+4. **Diseño.** Elige un diseño rápido rojo o azul con vista delantera y trasera, reemplázalo desde la galería y guarda otras parejas de imágenes en el catálogo. Aprueba el diseño y valida pedido, cotización y anticipo. Inicia entonces el plazo de 20 días hábiles.
 5. Valida la impresión para pasar a **Costura**, valida la costura para pasar a **Empaque**, comprueba piezas y etiquetas, y libera a **Envío**.
 6. Captura paquetería, guía, fechas y estado. El historial de envío se actualiza manualmente.
 
-El conteo por producto, talla y corte se calcula desde el mismo listado. Las tarifas de sublimación y short conservadas en el respaldo se usan para el costo interno. Los precios y costos se consultan en sus pestañas; las medidas no aparecen en el costeo.
+El conteo por producto, talla y corte se calcula desde el mismo listado. Las tarifas de sublimación y short conservadas en el respaldo se usan para el costo interno. Los precios y costos se consultan en sus pestañas; las medidas no aparecen en el costeo. **Tablas → Pago de sublimación y corte** reúne el pago del proveedor por producto, talla y corte. Agrega errores o impresiones extra y marca si también requieren corte. Estos extras no aumentan las prendas del cliente. Puedes elegir sin IVA adicional, más IVA o IVA incluido. Una tarifa faltante se muestra como pendiente; completa la tabla antes de pagar. La hoja Excel permite editar cantidades y tarifas y recalcula los importes.
 
 ## Documentos y cliente
 
@@ -45,9 +45,23 @@ Fuentes: [LISR, artículos 113-E y 113-J](https://www.diputados.gob.mx/LeyesBibl
 
 ## Computadora y respaldos
 
-Cuando tengas computadora, abre la misma dirección de la app e instálala desde Chrome o Edge. Descarga un respaldo completo del celular e impórtalo en la computadora; así conservas el mismo perfil local y los pedidos.
+Cuando tengas computadora, abre la misma dirección e instala la app desde Chrome o Edge. En **Equipo**, entra con la misma cuenta del celular. Los pedidos compartidos se descargan al conectar; cada dispositivo conserva una copia para trabajar sin internet.
 
-La sincronización automática entre equipos y el respaldo automático a Drive no están conectados en esta versión. Por ahora, el traslado es mediante el archivo de respaldo. Usa un equipo como base principal y respáldalo antes de restaurar en otro para conservar una versión completa. Los datos y diseños no se publican junto con el código.
+- Cada colaborador tiene su propia cuenta. Administración ve y edita precios, pagos, tarifas y permisos. Diseño libera la impresión; Costura / armado valida el cosido; Empaque valida el paquete; Envío captura paquetería y guía. Consulta solo revisa los datos de producción.
+- El servidor entrega a los departamentos un listado sin precios, anticipos, pagos ni datos fiscales. Las tareas se validan en orden; no se puede saltar una etapa.
+- **Equipo → Sincronizar ahora** envía los cambios pendientes. También se sincronizan al recuperar internet y durante el uso de la app. Si dos personas modifican campos diferentes se combinan; si cambian el mismo campo, revisa las copias antes de elegir.
+- Al entrar por primera vez, **Equipo → Pedidos que ya tenías en este equipo** permite revisar y compartir tus pedidos locales anteriores. La base local original y su respaldo se conservan. No incorpores un pedido vacío sobre uno que tiene prendas.
+- Las invitaciones de colaboradores son de un solo uso y duran siete días. Puedes limitar una invitación a un correo y cambiar o desactivar permisos. La primera invitación del propietario se entrega por separado; no va en el código público.
+- Descargar un respaldo completo sigue siendo útil para conservar versiones y archivos. El respaldo automático a Google Drive no está conectado. La sincronización de equipo usa Supabase.
+- Cerrar sesión oculta la cuenta anterior y conserva su copia para el siguiente acceso. Sin internet se usa el último permiso autorizado; una revocación se comprueba al volver a conectar.
+
+## Backend de colaboración
+
+`backend/proway-collaboration.sql` define el esquema privado, la validación del proceso y la API con control de roles. Aplica el SQL en un proyecto propio y configura el URL, la clave **publicable** y el identificador del espacio en `www/cloud-config.js`. El esquema evita acceso directo a tablas desde clientes.
+
+`backend/proway-cuentas/index.ts` permite crear cuentas únicamente con una invitación válida. La clave de servicio se usa dentro de la función del servidor; nunca va en `www` ni en el repositorio. Despliega esta función con el nombre `proway-cuentas`. No se cambia la configuración de registro de otras aplicaciones del proyecto.
+
+La creación inicial del espacio de trabajo y la invitación del propietario son una operación administrativa separada. Los datos reales, correos, contraseñas, invitaciones y respaldos quedan fuera de GitHub. La carpeta pública solo contiene código, imágenes de muestra y configuración publicable.
 
 ## Publicar desde GitHub
 
@@ -61,7 +75,7 @@ Fuentes: [Netlify: configuración](https://docs.netlify.com/build/configure-buil
 
 ## Ejecutar y comprobar el código
 
-Con Node.js 20 o posterior:
+Con Node.js 22 o posterior (24 recomendado):
 
 ```sh
 node server.mjs

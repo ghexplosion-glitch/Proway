@@ -1,8 +1,9 @@
-/* Proway Pedidos v1.0: persistence, files and installation. No remote database. */
+/* Proway Pedidos: durable offline snapshots and atomic collaboration outbox. */
 (() => {
   'use strict';
-  const DB_NAME = 'proway-pedidos', DB_VERSION = 1;
+  let DB_NAME = 'proway-pedidos'; const DB_VERSION = 1;
   let db, revision = 0, getter, timer, saving = Promise.resolve();
+  let syncHooks=null;
   let installPrompt, registration;
   const status = message => { const el = document.getElementById('pia-storage-status'); if (el) el.textContent = message; };
   const request = r => new Promise((resolve,reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
@@ -25,18 +26,23 @@
   async function write(state) {
     const database = await open();
     const tx = database.transaction('snapshots','readwrite'), done = completion(tx), store = tx.objectStore('snapshots');
-    const r = store.get('current');
+    const r = store.get('current'); let collaboration;
     r.onsuccess = () => {
       const current = r.result;
       if ((current?.revision || 0) !== revision) { tx.abort(); status('Hay cambios en otra ventana. Descarga un respaldo de tus cambios y recarga.'); return; }
       if (current) store.put(current,'previous');
+      if(syncHooks){collaboration=syncHooks.prepare(state);store.put(collaboration,'collaboration');}
       store.put({revision:revision+1,savedAt:new Date().toISOString(),state},'current');
     };
     await done;
     revision += 1;
+    if(syncHooks&&collaboration)syncHooks.committed(collaboration);
     status('Guardado en este equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
   }
   function bindState(fn) { getter = fn; }
+  async function switchScope(name){await flush();clearTimeout(timer);await saving.catch(()=>{});getter=null;syncHooks=null;if(db)db.close();db=null;revision=0;DB_NAME=name;return load();}
+  async function readAux(key='collaboration'){const database=await open();return request(database.transaction('snapshots').objectStore('snapshots').get(key));}
+  function setSyncHooks(hooks){syncHooks=hooks;}
   function flush() {
     clearTimeout(timer);
     if (!getter) return Promise.resolve();
@@ -90,6 +96,8 @@
       if(order.advanceRecord&&(!number(order.advanceRecord.amount)||!number(order.advanceRecord.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(order.advanceRecord.date)))throw Error('Anticipo validado inválido.');
       if (!['included','added'].includes(order.vatMode) || !order.images || !image(order.images.front) || !image(order.images.back)) throw Error('IVA o imágenes inválidos.');
       if (!Array.isArray(order.payments) || order.payments.some(p=>!text(p.id,64)||!number(p.amount)||!number(p.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(p.date))) throw Error('Registro de pagos inválido.');
+      if(order.showVat!==undefined&&typeof order.showVat!=='boolean')throw Error('Desglose de IVA inválido.');
+      if(order.supplier&&(!['none','added','included'].includes(order.supplier.mode)||!Array.isArray(order.supplier.extras)||order.supplier.extras.length>500||order.supplier.extras.some(x=>!identifier(x.id)||!['Error','Impresión extra'].includes(x.type)||!['Butarga','Playera','Short'].includes(x.product)||!['Hombre','Mujer'].includes(x.cut)||!text(x.size,30)||!Number.isInteger(x.qty)||x.qty<1||x.qty>10000||typeof x.cutting!=='boolean'||!text(x.note,500))))throw Error('Costos extra inválidos.');
       for (const r of order.rows) {
         if (!Number.isInteger(r.id)||r.id<1||!['Butarga','Playera','Short'].includes(r.product) || !['Hombre','Mujer'].includes(r.cut) || !text(r.size,30) || !Number.isInteger(r.qty) || r.qty<1 || r.qty>10000 || (r.special!==''&&!number(r.special))) throw Error('Prenda, talla, corte o precio inválido.');
         for (const key of ['printed','color','design']) if (!text(r[key]||'',500)) throw Error('Datos de prenda inválidos.');
@@ -107,6 +115,7 @@
     for(const a of value.activity)if(!identifier(a.client)||!text(a.time,100)||!text(a.action,4000))throw Error('Movimiento de historial inválido.');
     for(const j of value.jobs)if(!Number.isInteger(j.version)||j.version<1||!text(j.label,1000))throw Error('Enlace del historial inválido.');
     if (!value.profile || !text(value.profile.id,100) || !text(value.profile.name,200)) throw Error('Perfil local inválido.');
+    if(value.designs&&(!Array.isArray(value.designs)||value.designs.length>20||value.designs.some(d=>!identifier(d.id)||!text(d.name,100)||!d.images||!image(d.images.front)||!image(d.images.back))))throw Error('Catálogo de diseños inválido.');
     return value;
   }
   async function readBackup(file) {
@@ -127,7 +136,8 @@
     const quote = rev.source==='cotizacion', labels = rev.source==='etiquetas';
     const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&rev.data.heads.length>6?'landscape':'portrait',unit:'mm',format:'a4'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
-    doc.setFillColor(10,10,10); doc.rect(margin,10,58,20,'F'); doc.addImage(logoData(),'PNG',margin+2,11,54,17.2);
+    doc.addImage(logoData(),'PNG',margin,11,58,18.5);
+    doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(clean(title),margin,40);
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean(rev.client+' · '+rev.name+' · v'+rev.version),margin,47);
     doc.text(new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}),width-margin,18,{align:'right'});
@@ -146,14 +156,15 @@
     if (quote) {
       const q = rev.quote, t = q.tax;
       doc.setTextColor(128,73,9); doc.text('Cotización / proforma - Sin timbrar. No es CFDI.',margin,y); y+=8; doc.setTextColor(30,40,50);
-      paragraphs('Cliente: '+q.name+(q.contact?' / '+q.contact:'')+'\nPrendas: '+q.rows.reduce((s,r)=>s+r.qty,0)+'\nPrecios '+(t.mode==='included'?'con IVA incluido':'antes de IVA')+' en MXN.');
-      doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[['Producto / talla / corte','Cantidad','P. unitario','Importe']],body:q.rows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,money(r.price),money(r.amount)]),styles:{font:'helvetica',fontSize:9,cellPadding:3},headStyles:{fillColor:[23,42,61]},columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
+      const show=q.showVat!==false,rows=q.rows.map(r=>({...r,price:!show&&t.mode==='added'?Math.round(r.price*116)/100:r.price,amount:!show&&t.mode==='added'?Math.round(r.amount*116)/100:r.amount}));
+      if(!show&&rows.length)rows.at(-1).amount=Math.round((rows.at(-1).amount+t.total-rows.reduce((s,r)=>s+r.amount,0))*100)/100;
+      paragraphs('Cliente: '+q.name+(q.contact?' / '+q.contact:'')+'\nPrendas: '+q.rows.reduce((s,r)=>s+r.qty,0)+(show?'\nPrecios '+(t.mode==='included'?'con IVA incluido':'antes de IVA')+' en MXN.':'\nPrecios finales en MXN.'));
+      doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[['Producto / talla / corte','Cantidad','P. unitario','Importe']],body:rows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,money(r.price),money(r.amount)]),styles:{font:'helvetica',fontSize:9,cellPadding:3},headStyles:{fillColor:[23,105,64]},columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
       y=doc.lastAutoTable.finalY+10;
-      line('Subtotal sin IVA',t.subtotal);line('IVA 16%',t.iva);line('Total antes de retenciones',t.total,true);
-      if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}
-      else paragraphs(t.payerType==='pending'?'Retención y neto pendientes de confirmar el tipo de cliente.':'Cliente persona física: sin retención ISR del artículo 113-J.');
-      line('Depósitos registrados',q.advance);line('Saldo neto estimado',q.balance,true);
-      paragraphs('Emisor: '+(q.issuer.name||'Nombre fiscal pendiente')+' | RFC: '+(q.issuer.rfc||'Pendiente')+' | C. P.: '+(q.issuer.cp||'Pendiente')+'\nRégimen: '+q.issuer.regime+' · Persona física\nReceptor: '+(q.fiscal.name||q.name)+' | RFC: '+(q.fiscal.rfc||'Pendiente')+' | C. P.: '+(q.fiscal.cp||'Pendiente')+'\nRégimen receptor: '+(q.fiscal.regime||'Pendiente')+' | Uso CFDI: '+(q.fiscal.use||'Pendiente')+'\nForma de pago: '+(q.fiscal.form||'Pendiente')+' | Método: '+(q.fiscal.method||'Pendiente'));
+      if(show){line('Subtotal sin IVA',t.subtotal);line('IVA 16%',t.iva);line('Total antes de retenciones',t.total,true);if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}else if(t.payerType==='pending')paragraphs('Tipo fiscal del cliente pendiente de confirmar.');}
+      else {line('Total de la cotización',t.total,true);if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}}
+      line('Anticipo y pagos recibidos',q.advance);line('Saldo a pagar',q.balance,true);
+      if(show)paragraphs('Emisor: '+(q.issuer.name||'Nombre fiscal pendiente')+' | RFC: '+(q.issuer.rfc||'Pendiente')+' | C. P.: '+(q.issuer.cp||'Pendiente')+'\nRégimen: '+q.issuer.regime+' · Persona física\nReceptor: '+(q.fiscal.name||q.name)+' | RFC: '+(q.fiscal.rfc||'Pendiente')+' | C. P.: '+(q.fiscal.cp||'Pendiente')+'\nRégimen receptor: '+(q.fiscal.regime||'Pendiente')+' | Uso CFDI: '+(q.fiscal.use||'Pendiente')+'\nForma de pago: '+(q.fiscal.form||'Pendiente')+' | Método: '+(q.fiscal.method||'Pendiente'));
       paragraphs('Plazo aproximado: 20 días hábiles desde el inicio validado, después de aprobar pedido, cotización, diseño y anticipo. Tiempo de paquetería por confirmar.');
       if(q.due)paragraphs('Entrega de producción estimada: '+new Date(q.due+'T12:00:00Z').toLocaleDateString('es-MX',{timeZone:'UTC'}));
     } else if(labels) {
@@ -175,12 +186,24 @@
     }
     const pictures=rev.quote?.images||rev.images;
     if(pictures&&Object.values(pictures).some(Boolean)) {
+      if(quote){
+        if(y>height-100){doc.addPage();y=22;}
+        doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Diseño propuesto',margin,y);y+=8;
+        const cellW=(width-2*margin-12)/2;
+        for(const [index,side] of ['front','back'].entries()){
+          const data=pictures[side];if(!data)continue;const x=margin+index*(cellW+12);
+          doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(side==='front'?'Delantero':'Trasero',x,y);
+          const props=doc.getImageProperties(data),scale=Math.min(cellW/props.width,72/props.height);
+          doc.addImage(data,props.fileType,x,y+4,props.width*scale,props.height*scale);
+        }
+      }else{
       doc.addPage();y=22;doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Diseño del pedido',margin,y);y+=10;
       for(const [side,data] of Object.entries(pictures)){if(!data)continue;
         if(y>height-110){doc.addPage();y=20;}
         doc.setFontSize(10);doc.text(side==='front'?'Frente':'Espalda',margin,y);y+=5;
         const props=doc.getImageProperties(data),scale=Math.min((width-2*margin)/props.width,95/props.height);
         doc.addImage(data,props.fileType,margin,y,props.width*scale,props.height*scale);y+=props.height*scale+14;
+      }
       }
     }
     for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);doc.text('Proway · '+(quote?'Cotización sin timbrar':'Documento de trabajo'),margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
@@ -190,7 +213,7 @@
     const wb=new ExcelJS.Workbook();wb.creator='Proway';wb.created=new Date();
     const sheet=wb.addWorksheet('Documento'), d=rev.data;
     sheet.addRow(['','',title]);sheet.addRow(['','',rev.client+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
-    sheet.mergeCells('A1:B3');sheet.getCell('A1').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}};
+    sheet.mergeCells('A1:B3');
     const mark=wb.addImage({base64:logoData(),extension:'png'});sheet.addImage(mark,{tl:{col:0,row:0},ext:{width:170,height:54}});
     if(rev.source==='cotizacion')sheet.addRow(['Cotización / proforma - sin timbrar. No es CFDI.']);
     sheet.addRow([]);const header=sheet.addRow(d.heads);
@@ -199,7 +222,28 @@
     for(const values of d.rows){const row=sheet.addRow(values);row.eachCell((cell,i)=>{cell.font={name:'Arial',size:11};if(d.money.includes(i-1))cell.numFmt='"$"#,##0.00';});if(rev.source==='cotizacion'){row.getCell(6).value={formula:'ROUND(D'+row.number+'*E'+row.number+',2)',result:values[5]};for(const i of [4,5])row.getCell(i).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};}}
     const lastRow=sheet.lastRow.number;sheet.addRow([]);const summaries=new Map();
     for(const values of d.summary||[]){const row=sheet.addRow(values);summaries.set(values[0],row.number);if(typeof values[1]==='number')row.getCell(2).numFmt='"$"#,##0.00';}
-    if(rev.source==='cotizacion'&&d.rows.length){
+    if(rev.source==='proveedor'&&d.rows.length){
+      for(let n=firstRow;n<=lastRow;n++){
+        const r=sheet.getRow(n);r.getCell(8).value={formula:'IF(ISNUMBER(F'+n+'),ROUND(E'+n+'*F'+n+',2),"Tarifa pendiente")',result:d.rows[n-firstRow][7]};
+        r.getCell(9).value={formula:'ROUND(E'+n+'*G'+n+',2)',result:d.rows[n-firstRow][8]};
+        for(const c of [5,6,7])r.getCell(c).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};
+      }
+      const at=label=>'B'+summaries.get(label),mode=at('IVA del proveedor');
+      const formula=(label,f)=>{const c=sheet.getCell(at(label));c.value={formula:f,result:c.value};};
+      const total='('+at('Sublimación')+'+'+at('Corte')+')';
+      formula('Sublimación','IF(COUNT(F'+firstRow+':F'+lastRow+')<ROWS(F'+firstRow+':F'+lastRow+'),"Tarifa pendiente",SUM(H'+firstRow+':H'+lastRow+'))');
+      formula('Corte','SUM(I'+firstRow+':I'+lastRow+')');
+      formula('Subtotal','IF(ISNUMBER('+at('Sublimación')+'),IF('+mode+'="IVA incluido",ROUND('+total+'/1.16,2),'+total+'),"Pendiente")');
+      formula('Total a pagar','IF(ISNUMBER('+at('Sublimación')+'),IF('+mode+'="Precios más IVA",ROUND('+total+'*1.16,2),'+total+'),"Tarifa pendiente")');
+      formula('IVA','IF(ISNUMBER('+at('Subtotal')+'),'+at('Total a pagar')+'-'+at('Subtotal')+',"Pendiente")');
+      sheet.getCell(mode).dataValidation={type:'list',allowBlank:false,formulae:['"Sin IVA adicional,Precios más IVA,IVA incluido"']};sheet.getCell(mode).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};wb.calcProperties.fullCalcOnLoad=true;
+      sheet.addRow(['Editar celdas verdes: cantidad, tarifa y corte. Los totales se recalculan en Excel o Google Sheets.']);
+    }
+    if(rev.source==='cotizacion'&&d.rows.length&&rev.quote?.showVat===false){
+      const at=label=>'B'+summaries.get(label),sum='SUM(F'+firstRow+':F'+lastRow+')';
+      const formula=(label,f)=>{const cell=sheet.getCell(at(label));cell.value={formula:f,result:cell.value};};
+      formula('Total de la cotización',sum);if(rev.quote.tax.payerType==='PM'){formula('Retención ISR 1.25%','ROUND('+at('Total de la cotización')+'/1.16*0.0125,2)');formula('Neto a pagar',at('Total de la cotización')+'-'+at('Retención ISR 1.25%'));}formula('Saldo a pagar','MAX(0,'+at(rev.quote.tax.payerType==='PM'?'Neto a pagar':'Total de la cotización')+'-'+at('Anticipo y pagos recibidos')+')');wb.calcProperties.fullCalcOnLoad=true;
+    }else if(rev.source==='cotizacion'&&d.rows.length){
       const at=label=>'B'+summaries.get(label),sum='SUM(F'+firstRow+':F'+lastRow+')';
       const formula=(label,f)=>{const cell=sheet.getCell(at(label));cell.value={formula:f,result:cell.value};};
       const mode=at('Precios'),kind=at('Tipo de cliente');
@@ -213,7 +257,7 @@
       formula('Saldo neto estimado','MAX(0,'+at('Neto estimado')+'-'+at('Depósitos')+')');
       wb.calcProperties.fullCalcOnLoad=true;
     }
-    if(rev.quote){const q=rev.quote;sheet.addRow([]);for(const row of [['Emisor',q.issuer.name],['RFC emisor',q.issuer.rfc],['C. P. emisor',q.issuer.cp],['Régimen emisor',q.issuer.regime],['RFC receptor',q.fiscal.rfc],['Nombre fiscal receptor',q.fiscal.name],['C. P. receptor',q.fiscal.cp],['Régimen receptor',q.fiscal.regime],['Uso CFDI',q.fiscal.use],['Forma de pago',q.fiscal.form],['Método de pago',q.fiscal.method]])sheet.addRow(row);}
+    if(rev.quote&&rev.quote.showVat!==false){const q=rev.quote;sheet.addRow([]);for(const row of [['Emisor',q.issuer.name],['RFC emisor',q.issuer.rfc],['C. P. emisor',q.issuer.cp],['Régimen emisor',q.issuer.regime],['RFC receptor',q.fiscal.rfc],['Nombre fiscal receptor',q.fiscal.name],['C. P. receptor',q.fiscal.cp],['Régimen receptor',q.fiscal.regime],['Uso CFDI',q.fiscal.use],['Forma de pago',q.fiscal.form],['Método de pago',q.fiscal.method]])sheet.addRow(row);}
     sheet.columns.forEach((col,i)=>{col.width=Math.min(42,Math.max(15, String(d.heads[i]||'').length+4));col.alignment={vertical:'top',wrapText:true};});
     sheet.views=[{state:'frozen',ySplit:header.number}];sheet.pageSetup={paperSize:9,orientation:d.heads.length>6?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     if(rev.source==='pedido'){
@@ -273,10 +317,10 @@
       update?.addEventListener('click',async()=>{await flush();if(registration.waiting){updateRequested=true;registration.waiting.postMessage({type:'ACTIVATE_UPDATE'});}});
       navigator.serviceWorker.addEventListener('controllerchange',()=>{if(updateRequested&&!refreshing){refreshing=true;location.reload();}});
     }
-    window.addEventListener('online',()=>status('Con conexión · guardado local. Sin sincronización automática.'));
+    window.addEventListener('online',()=>status('Con conexión · guardado local activo'));
     window.addEventListener('offline',()=>status('Sin conexión · pedidos guardados en este equipo'));
     document.addEventListener('visibilitychange',()=>{if(document.hidden)flush().catch(()=>{});});
     if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
   }
-  window.ProwayPlatform={load,bindState,changed,flush,backup,readBackup,validateState,download,pdf,excel,readExcel,optimizeImage,quoteLink,readQuote,shareFile,install,status};
+  window.ProwayPlatform={load,bindState,changed,flush,switchScope,readAux,setSyncHooks,backup,readBackup,validateState,download,pdf,excel,readExcel,optimizeImage,quoteLink,readQuote,shareFile,install,status};
 })();

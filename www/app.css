@@ -1,4 +1,4 @@
-html{color-scheme:light dark}body{margin:0;background:light-dark(#eef1f4,#141b22);font-family:Segoe UI,Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:default}
+html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);font-family:Segoe UI,Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:default}
 #proway-pedidos-preview{padding:18px 8px 14px;display:flex;justify-content:center;background-color:transparent}
 #pia-offline-app{--pia-bg:light-dark(#f6f8f7,#141c19);--pia-paper:light-dark(#ffffff,#1c2822);--pia-text:light-dark(#192a23,#eaf4ee);--pia-secondary:light-dark(#55675d,#aac0b2);--pia-line:light-dark(#dbe5de,#364d40);--pia-green:light-dark(#176940,#8ddab0);--pia-on-green:light-dark(#ffffff,#10291d);--pia-input:light-dark(#eaf7ee,#213e2d);--pia-soft:light-dark(#e5efe9,#2b3931);--pia-orange:light-dark(#8c510c,#eec38d);--pia-warn:light-dark(#fff4df,#3c3020);--pia-blue:light-dark(#25467a,#accaf0);--pia-art:light-dark(#166c45,#74bd91);--pia-shadow:light-dark(#162d2220,#00000040);width:min(100%,460px);background:var(--pia-bg);color:var(--pia-text);font:400 16px/1.45 "Segoe UI",Arial,sans-serif;border:1px solid var(--pia-line);border-radius:24px;box-shadow:0 12px 40px var(--pia-shadow);overflow:hidden}
 #pia-offline-app *{box-sizing:border-box}
@@ -200,3 +200,36 @@ html{color-scheme:light dark}body{margin:0;background:light-dark(#eef1f4,#141b22
 #proway-pedidos-preview [hidden]{display:none!important}
 
 #pia-offline-app .pia-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,540px);padding-bottom:env(safe-area-inset-bottom,0px);z-index:20;border-radius:0}#pia-offline-app #pia-main{padding-bottom:90px}#pia-offline-app{border-radius:0;min-height:100dvh}
+
+/* Collaboration and the light customer quotation. */
+#pia-offline-app .pia-logo-wrap{background:transparent;}
+#pia-offline-app .pia-connect{justify-content:space-between;font-size:12px;min-height:48px;}
+#pia-offline-app .pia-connect button{border:1px solid #c5dfd1;border-radius:9px;background:#fff;padding:9px;white-space:nowrap;}
+#pia-offline-app .pia-department-nav{grid-template-columns:repeat(4,1fr);}
+#pia-offline-app .pia-quote-balance{display:flex;justify-content:space-between;gap:12px;padding:18px 12px;background:#eaf7ee;border-radius:10px;margin:12px 0;font-size:17px;color:#176940;}
+#pia-offline-app .pia-quote-design{margin:18px 0;border-top:1px solid #dbe5de;padding-top:14px;}
+#pia-offline-app .pia-quote-modern .pia-doc-title{color:#176940;font-size:25px;}
+#pia-offline-app .pia-design-catalog{display:grid;grid-template-columns:1fr;gap:12px;padding-top:12px;}
+#pia-offline-app .pia-design-card{border:1px solid #dbe5de;border-radius:12px;padding:12px;}
+#pia-offline-app .pia-design-card>div{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+#pia-offline-app .pia-design-card img{width:100%;height:175px;object-fit:contain;background:#fff;}
+#pia-offline-app .pia-design-card button{border:1px solid #c5dfd1;border-radius:8px;background:#eaf7ee;padding:10px;width:100%;}
+.pia-team-dialog{color-scheme:light;color:#192a23;background:#f6f8f7;border:1px solid #dbe5de;border-radius:20px;width:min(460px,calc(100vw - 28px));max-height:90dvh;padding:20px;font:16px/1.45 Arial,sans-serif;box-sizing:border-box;}
+.pia-team-dialog::backdrop{background:#172a3d88;}
+.pia-team-dialog h2{font-size:22px;margin:0;}
+.pia-team-dialog h3{font-size:18px;margin-top:0;}
+.pia-team-top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px;}
+.pia-team-dialog button{padding:11px;border:1px solid #c5dfd1;border-radius:9px;background:#fff;color:#176940;min-height:44px;margin:5px 0;font:inherit;cursor:pointer;}
+.pia-team-dialog button:disabled{opacity:.5;cursor:default;}
+.pia-team-dialog .pia-primary{background:#176940;color:#fff;width:100%;}
+.pia-team-field{display:block;margin:12px 0;}
+.pia-team-field input,.pia-team-field select,.pia-team-field textarea,.pia-team-member select{display:block;padding:11px;margin-top:5px;min-height:44px;width:100%;box-sizing:border-box;background:#eaf7ee;color:#192a23;border:1px solid #c5dfd1;border-radius:9px;font:inherit;}
+.pia-team-field textarea{min-height:110px;overflow-wrap:anywhere;}
+.pia-team-tabs{display:flex;gap:12px;}
+.pia-team-card{padding:15px;border:1px solid #dbe5de;background:#fff;border-radius:12px;margin:15px 0;}
+.pia-team-dialog .pia-check{display:flex;gap:12px;align-items:center;margin:12px 0;}
+.pia-team-dialog .pia-check input{width:22px;height:22px;flex-shrink:0;accent-color:#176940;}
+.pia-team-member{padding:12px 0;border-top:1px solid #dbe5de;}
+.pia-team-dialog small{color:#55675d;font-size:13px;display:block;}
+.pia-team-message{padding:12px;background:#fff4df;color:#6d430e;border-radius:9px;overflow-wrap:anywhere;}
+[hidden]{display:none!important;}
