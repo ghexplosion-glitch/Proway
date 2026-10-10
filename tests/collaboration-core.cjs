@@ -27,4 +27,13 @@ assert.deepEqual(upgraded.orders[0].additionalDesigns,[],'Cloud snapshots normal
 const designPatch=C.prepare(fromServer,{...fresh,orders:[{...order,additionalDesigns:[{id:'D-test',name:'Azul',images:{front:'a',back:'b'}}]}]},uuid).pending.C1;
 assert.equal(designPatch.guards.sewn,false,'Additional artwork protects concurrent department progress');
 assert.equal(C.guardsFor({released:true},order).additionalDesigns,null,'An old order guard preserves its missing-field representation');
-console.log('Synchronization rules: 19 checks passed');
+const defaults=C.normalizeOrder(order);
+assert.equal(Object.keys(C.prepare(fromServer,{...fresh,orders:[defaults]},uuid).pending).length,0,'Old cloud orders never acquire empty quotation fields during navigation');
+assert.deepEqual(C.stateFrom({...fresh,orders:[defaults]},fromServer).orders[0].shippingQuote,{amount:0,description:''},'Shipping defaults are normalized before screen equality checks');
+const discarded=C.prepare(fromServer,{...fresh,orders:[{...defaults,quoteStatus:'discarded'}]},uuid).pending.C1;
+assert.equal(discarded.guards.payments,null,'Discard checks payments added concurrently by another computer');
+assert.equal(discarded.guards.advanceRecord,null,'Discard checks a concurrent advance validation');
+assert.equal(C.guardsFor({released:true},order).quoteStatus,null,'Production cannot progress after a concurrent quote discard');
+assert.equal(C.guardsFor({released:true},order).shippingQuote,null,'Production checks the quotation shipping charge');
+assert.deepEqual(C.guardsFor({plannedCosts:{fabric:100}},order),{},'Internal forecast costs do not reset production or payment approvals');
+console.log('Synchronization rules: 26 checks passed');

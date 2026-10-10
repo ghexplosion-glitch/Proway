@@ -1,4 +1,4 @@
-# Proway Pedidos 1.3
+# Proway Pedidos 1.4
 
 App instalable para trabajar primero en el celular y, más adelante, en la computadora. Pedidos, imágenes, cobros, versiones y avances se guardan en una base local del dispositivo. La colaboración sincroniza los pedidos con el equipo cuando hay conexión.
 
@@ -125,3 +125,11 @@ La versión 1.3 añade impresión de etiquetas de varios pedidos, diseños adici
 Incrementa la versión del caché en `www/sw.js` en cada publicación. Cuando el dispositivo tenga conexión, detectará la nueva versión y mostrará **Actualizar app**. Ese botón guarda los cambios antes de cargar la actualización; la base local se conserva.
 
 Las bibliotecas están incluidas en `www/vendor` con sus licencias. La app no necesita CDNs ni instalar paquetes para su uso normal.
+
+## Cotizaciones, envío y utilidad prevista (1.4)
+
+- En **Cobro → Cotización no aprobada → Descartar cotización**, archiva una cotización sin cobros validados ni producción iniciada. Las prendas, imágenes y versiones se conservan. Se excluye de los pedidos activos, de los lotes de etiquetas y de la previsión financiera. **Historial → Descartadas → Recuperar** permite reutilizarla. Documentos y enlaces emitidos conservan su versión; el archivo no revoca copias enviadas.
+- **Cobro → Envío cobrado al cliente** agrega el envío como concepto de la cotización, PDF, Excel y enlace. Aplica el mismo modo de IVA que las prendas. El importe y detalle se pueden editar; se vuelve a validar cotización/anticipo, conservando los cobros ya registrados. El costo real o previsto para Proway se captura internamente.
+- **Cobro → Costos y utilidad prevista** permite presupuestar tela adicional, costura, envío y otros costos de cada pedido. Sublimación, corte, errores y tela de short se calculan de sus tablas. **Taller sublimación → Control de dinero** muestra la utilidad total aunque los pedidos tengan saldo pendiente: venta cotizada sin IVA menos costos totales previstos/pagados y gastos generales, antes de ISR. Incluye cotizaciones activas por aprobar y confirmadas; excluye descartadas. Los costos se consideran con el IVA pagado, sin acreditar IVA automáticamente.
+- Para evitar doble conteo, cada categoría de egreso vinculada al mismo pedido sustituye su presupuesto cuando el gasto pagado es mayor. Se usa el mayor de presupuesto y pagos por categoría (taller, tela, costura, envío u otros). Los gastos generales y los egresos de cotizaciones descartadas se descuentan una sola vez del total. Sin una tarifa necesaria la utilidad queda **pendiente**; los costos todavía no capturados permanecen en cero y deben completarse para afinar la estimación. La previsión no altera el efectivo ni el cálculo mensual de ISR basado en cobros.
+- La actualización conserva IndexedDB versión 1 y schemaVersion 1. Para un backend 1.3, aplica **backend/proway-quote-profit.sql**; reemplaza solo tres validadores/helpers privados y conserva registros y permisos. **backend/test-quote-profit.sql** verifica el cambio en una transacción aislada con rollback.

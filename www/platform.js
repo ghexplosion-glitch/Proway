@@ -68,11 +68,13 @@
     if(!Array.isArray(value)||value.length>8)return false;const ids=new Set();
     return value.every(d=>{if(!d||!identifier(d.id)||ids.has(d.id)||!text(d.name,100)||!d.name.trim()||!d.images||!image(d.images.front)||!image(d.images.back))return false;ids.add(d.id);return true;});
   }
+  function validShipping(s){return s===undefined||!!s&&typeof s==='object'&&!Array.isArray(s)&&number(s.amount)&&text(s.description,200)&&Object.keys(s).every(k=>['amount','description'].includes(k));}
+  function validPlans(s){return s===undefined||!!s&&typeof s==='object'&&!Array.isArray(s)&&['fabric','sewing','shipping','other'].every(k=>number(s[k]))&&Object.keys(s).every(k=>['fabric','sewing','shipping','other'].includes(k));}
   function validQuote(q) {
     return !!q && identifier(q.id) && text(q.name,200) && text(q.contact||'',200) &&
       ['pending','PF','PM'].includes(q.payerType) && number(q.advance) && number(q.balance) &&
       Array.isArray(q.rows) && q.rows.length<=10000 && q.tax && q.issuer && q.fiscal && q.images &&
-      image(q.images.front) && image(q.images.back) && validDesigns(q.additionalDesigns) &&
+      image(q.images.front) && image(q.images.back) && validDesigns(q.additionalDesigns) && validShipping(q.shippingQuote) &&
       q.rows.every(r=>['Butarga','Playera','Short'].includes(r.product)&&['Hombre','Mujer'].includes(r.cut)&&text(r.size,30)&&number(r.price)&&number(r.amount)&&Number.isInteger(r.qty)&&r.qty>=1&&r.qty<=10000) &&
       ['subtotal','iva','total','retention','net'].every(k=>number(q.tax[k])) &&
       ['pending','PF','PM'].includes(q.tax.payerType) && ['included','added'].includes(q.tax.mode) &&
@@ -102,6 +104,8 @@
       if (rowCount>10000 || !number(order.advance) || !number(order.advanceIsr||0) || !['pending','PF','PM'].includes(order.payerType)) throw Error('Importes o tipo fiscal inválidos.');
       if(order.advanceRecord&&(!number(order.advanceRecord.amount)||!number(order.advanceRecord.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(order.advanceRecord.date)))throw Error('Anticipo validado inválido.');
       if (!['included','added'].includes(order.vatMode) || !order.images || !image(order.images.front) || !image(order.images.back)) throw Error('IVA o imágenes inválidos.');
+      if(order.quoteStatus!==undefined&&!['active','discarded'].includes(order.quoteStatus))throw Error('Estado de cotización inválido.');
+      if(!validShipping(order.shippingQuote)||!validPlans(order.plannedCosts))throw Error('Envío o costos previstos inválidos.');
       if(!validDesigns(order.additionalDesigns))throw Error('Diseños adicionales inválidos.');
       if (!Array.isArray(order.payments) || order.payments.some(p=>!text(p.id,64)||!number(p.amount)||!number(p.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(p.date))) throw Error('Registro de pagos inválido.');
       if(order.showVat!==undefined&&typeof order.showVat!=='boolean')throw Error('Desglose de IVA inválido.');
@@ -147,7 +151,7 @@
   function logoData(){const img=document.getElementById('pia-proway-logo');if(!img?.naturalWidth)throw Error('El logo aún no está disponible. Reintenta la descarga.');const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}
   function pdf(rev,logo,title) {
     const quote = rev.source==='cotizacion', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
-    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&rev.data.heads.length>6?'landscape':'portrait',unit:'mm',format:'a4'});
+    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:'a4'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
     if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
@@ -169,10 +173,11 @@
     if (quote) {
       const q = rev.quote, t = q.tax;
       doc.setTextColor(128,73,9); doc.text('Cotización / proforma - Sin timbrar. No es CFDI.',margin,y); y+=8; doc.setTextColor(30,40,50);
-      const show=q.showVat!==false,rows=q.rows.map(r=>({...r,price:!show&&t.mode==='added'?Math.round(r.price*116)/100:r.price,amount:!show&&t.mode==='added'?Math.round(r.amount*116)/100:r.amount}));
+      const shipping=q.shippingQuote||{amount:0,description:''},sourceRows=[...q.rows,...(shipping.amount>0||shipping.description?[{product:'Envío',size:shipping.description,cut:'',qty:1,price:shipping.amount,amount:shipping.amount}]:[])];
+      const show=q.showVat!==false,rows=sourceRows.map(r=>({...r,price:!show&&t.mode==='added'?Math.round(r.price*116)/100:r.price,amount:!show&&t.mode==='added'?Math.round(r.amount*116)/100:r.amount}));
       if(!show&&rows.length)rows.at(-1).amount=Math.round((rows.at(-1).amount+t.total-rows.reduce((s,r)=>s+r.amount,0))*100)/100;
       paragraphs('Cliente: '+q.name+(q.contact?' / '+q.contact:'')+'\nPrendas: '+q.rows.reduce((s,r)=>s+r.qty,0)+(show?'\nPrecios '+(t.mode==='included'?'con IVA incluido':'antes de IVA')+' en MXN.':'\nPrecios finales en MXN.'));
-      doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[['Producto / talla / corte','Cantidad','P. unitario','Importe']],body:rows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,money(r.price),money(r.amount)]),styles:{font:'helvetica',fontSize:9,cellPadding:3},headStyles:{fillColor:[23,105,64]},columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
+      doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[['Producto / talla / corte','Cantidad','P. unitario','Importe']],body:rows.map(r=>[clean(r.product+(r.size?' / '+r.size:'')+(r.cut?' / '+r.cut:'')),r.qty,money(r.price),money(r.amount)]),styles:{font:'helvetica',fontSize:9,cellPadding:3},headStyles:{fillColor:[23,105,64]},columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
       y=doc.lastAutoTable.finalY+10;
       if(show){line('Subtotal sin IVA',t.subtotal);line('IVA 16%',t.iva);line('Total antes de retenciones',t.total,true);if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}else if(t.payerType==='pending')paragraphs('Tipo fiscal del cliente pendiente de confirmar.');}
       else {line('Total de la cotización',t.total,true);if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}}
@@ -261,6 +266,9 @@
     if(rev.source==='cotizacion'&&d.rows.length&&rev.quote?.showVat===false){
       const at=label=>'B'+summaries.get(label),sum='SUM(F'+firstRow+':F'+lastRow+')';
       const formula=(label,f)=>{const cell=sheet.getCell(at(label));cell.value={formula:f,result:cell.value};};
+      // The final line absorbs invoice rounding; precise final unit prices stay editable.
+      const last=sheet.getRow(lastRow),previous=lastRow>firstRow?'SUM(F'+firstRow+':F'+(lastRow-1)+')':'0';
+      last.getCell(6).value={formula:'ROUND(SUMPRODUCT(D'+firstRow+':D'+lastRow+',E'+firstRow+':E'+lastRow+'),2)-'+previous,result:d.rows.at(-1)[5]};
       formula('Total de la cotización',sum);if(rev.quote.tax.payerType==='PM'){formula('Retención ISR 1.25%','ROUND('+at('Total de la cotización')+'/1.16*0.0125,2)');formula('Neto a pagar',at('Total de la cotización')+'-'+at('Retención ISR 1.25%'));}formula('Saldo a pagar','MAX(0,'+at(rev.quote.tax.payerType==='PM'?'Neto a pagar':'Total de la cotización')+'-'+at('Anticipo y pagos recibidos')+')');wb.calcProperties.fullCalcOnLoad=true;
     }else if(rev.source==='cotizacion'&&d.rows.length){
       const at=label=>'B'+summaries.get(label),sum='SUM(F'+firstRow+':F'+lastRow+')';

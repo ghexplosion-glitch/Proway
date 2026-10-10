@@ -1,89 +1,5 @@
--- Proway: private data, invitation-only membership and optimistic synchronization.
--- This migration does not change any existing application tables or Auth settings.
-create schema if not exists proway_private;
-revoke all on schema proway_private from public, anon, authenticated;
-grant usage on schema proway_private to authenticated, service_role;
-
-create table proway_private.workspaces (
-  id uuid primary key default gen_random_uuid(),
-  name text not null check (length(name) between 1 and 200),
-  owner_id uuid references auth.users(id), created_at timestamptz not null default now()
-);
-create table proway_private.members (
-  workspace_id uuid not null references proway_private.workspaces(id),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  role text not null check (role in ('admin','diseno','costura','empaque','envio','consulta')),
-  active boolean not null default true, display_name text not null default '',
-  created_at timestamptz not null default now(), primary key(workspace_id,user_id)
-);
-create index proway_members_user_idx on proway_private.members(user_id,workspace_id);
-create table proway_private.orders (
-  workspace_id uuid not null references proway_private.workspaces(id),
-  order_id text not null check(order_id ~ '^[A-Za-z0-9_-]{1,64}$'),
-  data jsonb not null, version bigint not null default 1,
-  updated_by uuid references auth.users(id) on delete set null,
-  updated_at timestamptz not null default now(), primary key(workspace_id,order_id)
-);
-create table proway_private.settings (
-  workspace_id uuid primary key references proway_private.workspaces(id),
-  data jsonb not null, version bigint not null default 1,
-  updated_at timestamptz not null default now()
-);
-create table proway_private.events (
-  id bigint generated always as identity primary key,
-  workspace_id uuid not null references proway_private.workspaces(id),
-  order_id text not null default '', actor_id uuid references auth.users(id) on delete set null,
-  actor text not null, role text not null, action text not null,
-  created_at timestamptz not null default now()
-);
-create index proway_events_workspace_idx on proway_private.events(workspace_id,id desc);
-create table proway_private.invites (
-  token_hash text primary key, workspace_id uuid not null references proway_private.workspaces(id),
-  role text not null check(role in ('admin','diseno','costura','empaque','envio','consulta')),
-  email text not null default '', expires_at timestamptz not null,
-  used_by uuid references auth.users(id) on delete set null, used_at timestamptz,
-  created_by uuid references auth.users(id) on delete set null,
-  reserved_email text, attempts integer not null default 0, created_at timestamptz not null default now()
-);
-create index proway_invites_workspace_idx on proway_private.invites(workspace_id);
-create table proway_private.operations (
-  workspace_id uuid not null references proway_private.workspaces(id),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  operation_id uuid not null, request_hash text not null, result jsonb not null,
-  created_at timestamptz not null default now(), primary key(workspace_id,user_id,operation_id)
-);
-create index proway_operations_user_idx on proway_private.operations(user_id);
-create index proway_orders_updated_by_idx on proway_private.orders(updated_by);
-create index proway_events_actor_idx on proway_private.events(actor_id);
-create index proway_invites_used_by_idx on proway_private.invites(used_by);
-create index proway_invites_created_by_idx on proway_private.invites(created_by);
-create index proway_workspaces_owner_idx on proway_private.workspaces(owner_id);
-
-alter table proway_private.workspaces enable row level security;
-alter table proway_private.members enable row level security;
-alter table proway_private.orders enable row level security;
-alter table proway_private.settings enable row level security;
-alter table proway_private.events enable row level security;
-alter table proway_private.invites enable row level security;
-alter table proway_private.operations enable row level security;
--- No direct table privileges. All access goes through checked, projected RPCs.
-revoke all on all tables in schema proway_private from public, anon, authenticated;
-revoke all on all sequences in schema proway_private from public, anon, authenticated;
-
-create function proway_private.member_role(w uuid) returns text
-language plpgsql stable security definer set search_path = '' as $$
-declare r text;
-begin
-  if auth.uid() is null then raise exception 'Inicia sesión para continuar.' using errcode='42501'; end if;
-  if not exists(select 1 from auth.users u where u.id=auth.uid() and u.email_confirmed_at is not null and not u.is_anonymous) then
-    raise exception 'Cuenta sin verificar.' using errcode='42501';
-  end if;
-  select m.role into r from proway_private.members m where m.workspace_id=w and m.user_id=auth.uid() and m.active;
-  if r is null then raise exception 'No tienes acceso a este equipo.' using errcode='42501'; end if;
-  return r;
-end $$;
-
-create function proway_private.project_order(d jsonb, r text) returns jsonb
+-- Proway 1.4: compatible optional quotation fields. No order data is rewritten.
+create or replace function proway_private.project_order(d jsonb, r text) returns jsonb
 language plpgsql immutable set search_path = '' as $$
 declare outdata jsonb; rowsdata jsonb;
 begin
@@ -104,7 +20,7 @@ begin
   return outdata;
 end $$;
 
-create function proway_private.validate_order(d jsonb) returns void
+create or replace function proway_private.validate_order(d jsonb) returns void
 language plpgsql set search_path = '' as $$
 declare x jsonb; k text; n numeric; totalrows integer;
 begin
@@ -212,95 +128,7 @@ begin
   if (d->>'delivered')::boolean and (not (d->>'shipped')::boolean or d->'shipment'->>'status'<>'Entregado') then raise exception 'Registra primero el envío y después la entrega.'; end if;
 end $$;
 
-create function proway_private.api_members(action text, w uuid, p jsonb) returns jsonb
-language plpgsql security definer set search_path = '' as $$
-declare r text; uid uuid=auth.uid(); uemail text; uname text; i proway_private.invites%rowtype;
-  stored proway_private.orders%rowtype; sett proway_private.settings%rowtype; result jsonb; prev jsonb;
-  patch jsonb; expected jsonb; guards jsonb; projected jsonb; candidate jsonb; k text; token text;
-  oid text; op uuid; hash text; conflict boolean=false; resetting boolean=false; changes text[]; actor text;
-begin
-  if uid is null or jsonb_typeof(p) is distinct from 'object' then raise exception 'Inicia sesión para continuar.' using errcode='42501'; end if;
-  select lower(u.email), left(coalesce(u.raw_user_meta_data->>'display_name',u.email),200) into uemail,uname
-    from auth.users u where u.id=uid and u.email_confirmed_at is not null and not u.is_anonymous;
-  if uemail is null then raise exception 'Cuenta sin verificar.' using errcode='42501'; end if;
-  if action='join' then
-    token=p->>'token'; if coalesce(token,'')!~ '^[a-f0-9]{64}$' then raise exception 'Invitación inválida.'; end if;
-    select * into i from proway_private.invites where token_hash=encode(extensions.digest(token,'sha256'),'hex') for update;
-    if not found or i.expires_at<now() or (i.used_at is not null and i.used_by<>uid) or (i.email<>'' and i.email<>uemail) or (i.reserved_email is not null and i.reserved_email<>uemail) then raise exception 'La invitación no es válida, venció o ya se utilizó.' using errcode='42501'; end if;
-    if i.used_by=uid then return jsonb_build_object('workspace',i.workspace_id,'role',(select role from proway_private.members where workspace_id=i.workspace_id and user_id=uid)); end if;
-    insert into proway_private.members(workspace_id,user_id,role,display_name) values(i.workspace_id,uid,i.role,uname)
-      on conflict(workspace_id,user_id) do update set role=excluded.role,active=true,display_name=excluded.display_name;
-    if i.created_by is null and i.role='admin' then update proway_private.workspaces set owner_id=uid where id=i.workspace_id and owner_id is null; end if;
-    update proway_private.invites set used_by=uid,used_at=now() where token_hash=i.token_hash;
-    return jsonb_build_object('workspace',i.workspace_id,'role',i.role);
-  end if;
-  if action='memberships' then
-    return coalesce((select jsonb_agg(jsonb_build_object('id',m.workspace_id,'name',ws.name,'role',m.role,'displayName',m.display_name)) from proway_private.members m join proway_private.workspaces ws on ws.id=m.workspace_id where m.user_id=uid and m.active),'[]'::jsonb);
-  end if;
-  r=proway_private.member_role(w);
-  select m.display_name into actor from proway_private.members m where m.workspace_id=w and m.user_id=uid;
-  if action='sync' then
-    select * into sett from proway_private.settings where workspace_id=w;
-    result=jsonb_build_object('workspace',w,'name',(select name from proway_private.workspaces where id=w),'role',r,'displayName',actor,
-      'settingsVersion',sett.version,'settings',case when r='admin' then case when coalesce(p->>'settingsVersion','0')::bigint=sett.version then null else sett.data end else jsonb_build_object('calendar',sett.data->'calendar') end,
-      'orders',coalesce((select jsonb_agg(jsonb_build_object('id',o.order_id,'version',o.version,'data',proway_private.project_order(o.data,r)) order by o.order_id) from proway_private.orders o where o.workspace_id=w and o.version<>coalesce((p->'versions'->>o.order_id)::bigint,0)),'[]'::jsonb),
-      'orderIds',coalesce((select jsonb_agg(o.order_id order by o.order_id) from proway_private.orders o where o.workspace_id=w),'[]'::jsonb),
-      'events',coalesce((select jsonb_agg(ej order by eid) from (select e.id eid,jsonb_build_object('id',e.id,'client',e.order_id,'action',e.action,'actor',e.actor,'role',e.role,'time',e.created_at) ej from proway_private.events e where e.workspace_id=w order by e.id desc limit 200) ev),'[]'::jsonb));
-    return result;
-  end if;
-  if action='members' then
-    if r<>'admin' then raise exception 'Solo administración puede gestionar usuarios.' using errcode='42501'; end if;
-    return coalesce((select jsonb_agg(jsonb_build_object('id',m.user_id,'name',m.display_name,'email',u.email,'role',m.role,'active',m.active,'owner',ws.owner_id=m.user_id) order by m.created_at) from proway_private.members m join auth.users u on u.id=m.user_id join proway_private.workspaces ws on ws.id=m.workspace_id where m.workspace_id=w),'[]'::jsonb);
-  end if;
-  if action='invite' then
-    if r<>'admin' then raise exception 'Solo administración puede invitar.' using errcode='42501'; end if;
-    if coalesce(p->>'role','')<>all(array['admin','diseno','costura','empaque','envio','consulta']) then raise exception 'Departamento inválido.'; end if;
-    if (select count(*) from proway_private.invites where workspace_id=w and created_by=uid and created_at>now()-interval '1 hour')>=30 then raise exception 'Demasiadas invitaciones. Intenta más tarde.'; end if;
-    uemail=lower(trim(coalesce(p->>'email',''))); if length(uemail)>254 or (uemail<>'' and uemail!~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$') then raise exception 'Correo inválido.'; end if;
-    token=encode(extensions.gen_random_bytes(32),'hex');
-    insert into proway_private.invites(token_hash,workspace_id,role,email,expires_at,created_by) values(encode(extensions.digest(token,'sha256'),'hex'),w,p->>'role',uemail,now()+interval '7 days',uid);
-    return jsonb_build_object('token',token,'expiresAt',now()+interval '7 days','role',p->>'role');
-  end if;
-  if action='member_update' then
-    if r<>'admin' then raise exception 'Solo administración puede gestionar usuarios.' using errcode='42501'; end if;
-    if (p->>'userId')::uuid=(select owner_id from proway_private.workspaces where id=w) then raise exception 'El acceso del propietario se conserva.'; end if;
-    if coalesce(p->>'role','')<>all(array['admin','diseno','costura','empaque','envio','consulta']) or jsonb_typeof(p->'active') is distinct from 'boolean' then raise exception 'Permisos inválidos.'; end if;
-    update proway_private.members set role=p->>'role',active=(p->>'active')::boolean where workspace_id=w and user_id=(p->>'userId')::uuid;
-    return jsonb_build_object('ok',true);
-  end if;
-  raise exception 'Acción no permitida.';
-end $$;
-create function proway_private.save_settings_body(w uuid,r text,p jsonb,uid uuid,actor text) returns jsonb
-language plpgsql security invoker set search_path = '' as $$
-declare stored proway_private.orders%rowtype; sett proway_private.settings%rowtype; patch jsonb=p->'patch'; expected jsonb=p->'expected'; guards jsonb=coalesce(p->'guards','{}'::jsonb); result jsonb; candidate jsonb; projected jsonb; k text; oid text; conflict boolean=false; resetting boolean=false; e jsonb;
-begin
-    if r<>'admin' then raise exception 'Solo administración puede modificar precios y datos fiscales.' using errcode='42501'; end if;
-    select * into sett from proway_private.settings where workspace_id=w for update;
-    foreach k in array array(select jsonb_object_keys(patch)) loop
-      if k<>all(array['basePrice','cutPrice','rates','shortCosts','issuer','calendar','isrControl','designs','expenses']) then raise exception 'Configuración no permitida.'; end if;
-      if coalesce(sett.data->k,'null'::jsonb) is distinct from coalesce(expected->k,'null'::jsonb) and sett.data->k is distinct from patch->k then conflict=true; end if;
-    end loop;
-    if conflict then return jsonb_build_object('conflict',true,'id','settings','version',sett.version,'data',sett.data); end if;
-    candidate=sett.data||patch;
-    if (candidate->>'basePrice')::numeric not between 0 and 1000000000 or (candidate->>'cutPrice')::numeric not between 0 and 1000000000 or jsonb_typeof(candidate->'rates') is distinct from 'array' or jsonb_array_length(candidate->'rates')>500 or candidate->'issuer'->>'legalType'<>'PF' or coalesce(candidate->'issuer'->>'regime','') not like '626%' or jsonb_typeof(candidate->'calendar'->'saturday') is distinct from 'boolean' or length(candidate->'calendar'->>'extra')>10000 or octet_length(candidate::text)>15000000 then raise exception 'Configuración inválida.'; end if;
-    if candidate ? 'expenses' then
-      if jsonb_typeof(candidate->'expenses') is distinct from 'array' or jsonb_array_length(candidate->'expenses')>10000 then raise exception 'Registro de egresos inválido.'; end if;
-      for e in select value from jsonb_array_elements(candidate->'expenses') loop
-        if jsonb_typeof(e) is distinct from 'object' or coalesce(e->>'id','') !~ '^[A-Za-z0-9_-]{1,64}$'
-          or jsonb_typeof(e->'amount') is distinct from 'number' or (e->>'amount')::numeric not between 0.01 and 1000000000
-          or coalesce(e->>'category','') <> all(array['Hilos','Tela','Reparación de máquina','Costura','Sublimación y corte','Envío','Otro'])
-          or coalesce(e->>'date','') !~ '^\d{4}-\d{2}-\d{2}$' or to_char((e->>'date')::date,'YYYY-MM-DD') <> e->>'date'
-          or jsonb_typeof(e->'note') is distinct from 'string' or length(e->>'note')>500
-          or jsonb_typeof(e->'client') is distinct from 'string' or (e->>'client'<>'' and e->>'client' !~ '^[A-Za-z0-9_-]{1,64}$') then raise exception 'Egreso inválido.'; end if;
-      end loop;
-      if exists(select 1 from jsonb_array_elements(candidate->'expenses') a group by a->>'id' having count(*)>1) then raise exception 'Egreso duplicado.'; end if;
-    end if;
-    update proway_private.settings set data=candidate,version=version+1,updated_at=now() where workspace_id=w returning version into sett.version;
-    insert into proway_private.events(workspace_id,actor_id,actor,role,action) values(w,uid,actor,r,'Administración actualizó la configuración');
-    result=jsonb_build_object('ok',true,'id','settings','version',sett.version,'data',candidate);
-  return result;
-end $$;
-create function proway_private.save_order_body(w uuid,r text,p jsonb,uid uuid,actor text) returns jsonb
+create or replace function proway_private.save_order_body(w uuid,r text,p jsonb,uid uuid,actor text) returns jsonb
 language plpgsql security invoker set search_path = '' as $$
 declare stored proway_private.orders%rowtype; sett proway_private.settings%rowtype; patch jsonb=p->'patch'; expected jsonb=p->'expected'; guards jsonb=coalesce(p->'guards','{}'::jsonb); result jsonb; candidate jsonb; projected jsonb; k text; oid text; conflict boolean=false; resetting boolean=false;
 begin
@@ -352,56 +180,3 @@ begin
     result=jsonb_build_object('ok',true,'id',oid,'version',stored.version,'data',proway_private.project_order(stored.data,r));
   return result;
 end $$;
-create function proway_private.api_write(action text, w uuid, p jsonb) returns jsonb
-language plpgsql security definer set search_path = '' as $$
-declare r text; uid uuid=auth.uid(); uemail text; uname text; i proway_private.invites%rowtype;
-  stored proway_private.orders%rowtype; sett proway_private.settings%rowtype; result jsonb; prev jsonb;
-  patch jsonb; expected jsonb; guards jsonb; projected jsonb; candidate jsonb; k text; token text;
-  oid text; op uuid; hash text; conflict boolean=false; resetting boolean=false; changes text[]; actor text;
-begin
-  if uid is null or jsonb_typeof(p) is distinct from 'object' then raise exception 'Inicia sesión para continuar.' using errcode='42501'; end if;
-  select lower(u.email), left(coalesce(u.raw_user_meta_data->>'display_name',u.email),200) into uemail,uname
-    from auth.users u where u.id=uid and u.email_confirmed_at is not null and not u.is_anonymous;
-  if uemail is null then raise exception 'Cuenta sin verificar.' using errcode='42501'; end if;
-  r=proway_private.member_role(w);
-  select m.display_name into actor from proway_private.members m where m.workspace_id=w and m.user_id=uid;
-  if action<>all(array['save_order','save_settings']) then raise exception 'Acción no permitida.'; end if;
-  op=(p->>'operationId')::uuid; hash=encode(extensions.digest(action||p::text,'sha256'),'hex');
-  perform pg_advisory_xact_lock(hashtextextended(w::text||uid::text||op::text,0));
-  select o.result,o.request_hash into prev,token from proway_private.operations o where o.workspace_id=w and o.user_id=uid and o.operation_id=op;
-  if found then if token<>hash then raise exception 'La operación cambió. Intenta nuevamente.'; end if; return prev; end if;
-  patch=p->'patch'; expected=p->'expected'; guards=coalesce(p->'guards','{}'::jsonb);
-  if jsonb_typeof(patch) is distinct from 'object' or jsonb_typeof(expected) is distinct from 'object' or jsonb_typeof(guards) is distinct from 'object' then raise exception 'Cambio inválido.'; end if;
-  if action='save_settings' then result=proway_private.save_settings_body(w,r,p,uid,actor); else result=proway_private.save_order_body(w,r,p,uid,actor); end if;
-  if result->'conflict'='true'::jsonb then return result; end if;
-  insert into proway_private.operations(workspace_id,user_id,operation_id,request_hash,result) values(w,uid,op,hash,result);
-  return result;
-end $$;
-
-create function proway_private.api(action text,w uuid,p jsonb) returns jsonb language plpgsql security definer set search_path = '' as $$ begin if action=any(array['save_order','save_settings']) then return proway_private.api_write(action,w,p); else return proway_private.api_members(action,w,p); end if; end $$;
-
-create function public.proway_api(action text, workspace uuid default null, payload jsonb default '{}'::jsonb) returns jsonb
-language sql security invoker set search_path = '' as $$ select proway_private.api(action,workspace,payload); $$;
-
-create function proway_private.signup_check(token text, email text) returns jsonb
-language plpgsql security definer set search_path = '' as $$
-declare i proway_private.invites%rowtype; e text=lower(trim(email));
-begin
-  if auth.role()<>'service_role' then raise exception 'Acceso no permitido.' using errcode='42501'; end if;
-  if coalesce(token,'')!~ '^[a-f0-9]{64}$' or length(e)>254 or e!~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then raise exception 'Invitación o correo inválidos.'; end if;
-  select * into i from proway_private.invites where token_hash=encode(extensions.digest(token,'sha256'),'hex') for update;
-  if not found or i.expires_at<now() or i.used_at is not null or i.attempts>=8 or (i.email<>'' and i.email<>e) or (i.reserved_email is not null and i.reserved_email<>e) then raise exception 'La invitación no es válida, venció o ya se utilizó.'; end if;
-  update proway_private.invites set reserved_email=e,attempts=attempts+1 where token_hash=i.token_hash;
-  return jsonb_build_object('existing',exists(select 1 from auth.users where lower(auth.users.email)=e));
-end $$;
-create function public.proway_signup_check(token text, email text) returns jsonb
-language sql security invoker set search_path = '' as $$ select proway_private.signup_check(token,email); $$;
-
-revoke execute on all functions in schema proway_private from public,anon,authenticated;
-grant execute on function proway_private.api(text,uuid,jsonb) to authenticated;
-grant execute on function proway_private.signup_check(text,text) to service_role;
-revoke execute on function public.proway_api(text,uuid,jsonb) from public,anon;
-grant execute on function public.proway_api(text,uuid,jsonb) to authenticated;
-revoke execute on function public.proway_signup_check(text,text) from public,anon,authenticated;
-grant execute on function public.proway_signup_check(text,text) to service_role;
-comment on schema proway_private is 'Proway collaboration. Private tables; membership and projection enforced by scoped RPCs.';
