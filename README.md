@@ -1,5 +1,20 @@
 # Proway Pedidos 1.4
 
+## Vista de prueba 1.5
+
+`/prueba/` contiene una vista funcional independiente para revisar la siguiente actualización en celular y computadora. Se inicia con cinco pedidos ficticios, usa `proway-prueba-v15` en IndexedDB y no tiene acceso a la cuenta ni al espacio de colaboración real. Solo acepta sus propios respaldos. La aplicación principal conserva la versión 1.4 y sus datos.
+
+- Control de dinero tiene pestaña propia, selección de pedidos y apartados separados para aprobados y cotizaciones pendientes. Exportar mantiene la misma selección. Los gastos generales son opcionales y se descuentan una sola vez.
+- Los precios capturados son base: la casilla Agregar IVA suma 16% sin descontarlo del precio ni del costo de sublimación/corte. La cotización muestra el desglose únicamente al agregarlo. La utilidad operativa es venta base menos costos base, antes de ISR; el IVA se muestra aparte para conciliación, sin acreditar impuestos automáticamente.
+- Aprobar no registra efectivo. Los anticipos solo cuentan tras validarse y los pagos guardan el tratamiento fiscal vigente cuando se registraron. Corregir precios invalida aprobación/producción y conserva los cobros reales. Descartar una cotización sin pagos conserva filas, imágenes y versiones.
+- Pedido permite aplicar un color a filas seleccionadas, a todas las prendas o a las que comparten un color actual. Las cantidades y los precios se conservan.
+- Cotización, PDF, Excel y enlace incluyen proway.com.mx y WhatsApp 33 1007 9695. El icono de prueba tiene fondo blanco y el emblema Proway ampliado.
+- Ejecuta `npm run test:preview` para comprobar captura, aprobación, efectivo, IVA, selección, colores, imágenes, documentos, departamentos, envío, almacenamiento aislado y apertura sin conexión. La colaboración real se sigue comprobando con las pruebas de la aplicación principal.
+
+Para probar: abre la vista de prueba, elige Pedido nuevo de prueba, agrega prendas en Pedido, revisa los datos, continúa a Cobro, selecciona tipo de cliente, activa IVA si corresponde y pulsa Aprobar cotización. Registra y valida un anticipo ficticio para continuar por Taller. Los datos de prueba permanecen únicamente en ese dispositivo.
+
+La integración con el espacio compartido real requiere adaptar y comprobar las validaciones de servidor antes de publicar estas funciones en producción. La rama de prueba no aplica migraciones a la base real.
+
 App instalable para trabajar primero en el celular y, más adelante, en la computadora. Pedidos, imágenes, cobros, versiones y avances se guardan en una base local del dispositivo. La colaboración sincroniza los pedidos con el equipo cuando hay conexión.
 
 ## Instalar en el celular

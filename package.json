@@ -5,7 +5,8 @@
   "description": "Pedidos textiles sin conexión con colaboración por departamento",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node tests/collaboration-core.cjs && node tests/smoke.cjs && node tests/upgrade.cjs && node tests/workshop.cjs && node tests/design-labels.cjs && node tests/quote-profit.cjs"
+    "test": "node tests/collaboration-core.cjs && node tests/smoke.cjs && node tests/upgrade.cjs && node tests/workshop.cjs && node tests/design-labels.cjs && node tests/quote-profit.cjs && node tests/preview.cjs",
+    "test:preview": "node tests/preview.cjs"
   },
   "engines": {
     "node": ">=22"

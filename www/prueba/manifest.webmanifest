@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "Proway · Prueba",
+  "short_name": "Proway prueba",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "icons/prueba-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/prueba-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

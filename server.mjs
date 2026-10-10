@@ -7,7 +7,7 @@ const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; c
 const server=http.createServer(async(req,res)=>{
   try{
     const u=new URL(req.url,'http://localhost'),pathname=decodeURIComponent(u.pathname);
-    const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));
+    const file=path.resolve(root,'.'+(pathname.endsWith('/')?pathname+'index.html':pathname));
     if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}
     const bytes=await fs.readFile(file);
     res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(bytes);
