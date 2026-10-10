@@ -123,7 +123,7 @@
       if(action==='backup-old'){ProwayPlatform.backup(meta.migrationCandidate);return;}
       if(action==='dismiss-migrate'){meta.previousLocalBackup=meta.migrationCandidate;meta.migrationCandidate=null;await ProwayPlatform.flush();paint();return;}
       if(action.startsWith('conflict-')){
-        const id=b.dataset.id,conflict=meta.conflicts[id];if(!conflict)return;const state=bridge.getState();
+        const id=b.dataset.id,conflict=meta.conflicts[id];if(!conflict)return;await ProwayPlatform.checkpoint('Antes de resolver un conflicto de '+id);const state=bridge.getState();
         meta.conflictArchive=(meta.conflictArchive||[]).slice(-19);meta.conflictArchive.push({id,time:new Date().toISOString(),local:C.clone(meta.pending[id]?.desired)});
         if(id==='settings'){meta.settingsBase={data:conflict.data,version:conflict.version};if(action==='conflict-cloud')Object.assign(state,conflict.data);}
         else{meta.bases[id]={data:conflict.data,version:conflict.version};if(action==='conflict-cloud'){const at=state.orders.findIndex(o=>o.id===id);if(at>=0)state.orders[at]=conflict.data;}}

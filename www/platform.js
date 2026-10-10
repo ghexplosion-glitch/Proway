@@ -30,16 +30,36 @@
     r.onsuccess = () => {
       const current = r.result;
       if ((current?.revision || 0) !== revision) { tx.abort(); status('Hay cambios en otra ventana. Descarga un respaldo de tus cambios y recarga.'); return; }
-      if (current) store.put(current,'previous');
-      if(syncHooks){collaboration=syncHooks.prepare(state);store.put(collaboration,'collaboration');}
-      store.put({revision:revision+1,savedAt:new Date().toISOString(),state},'current');
+      const index=store.get('backup-index');index.onsuccess=()=>{
+        const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        if(current&&current.state.appVersion!==state.appVersion)queueCheckpoint(store,current,index.result,'Antes de actualizar a '+state.appVersion);
+        else if(current&&!(index.result||[]).some(b=>b.day===day))queueCheckpoint(store,current,index.result,'Respaldo automático del día');
+        if(current)store.put(current,'previous');
+        if(syncHooks){collaboration=syncHooks.prepare(state);store.put(collaboration,'collaboration');}
+        store.put({revision:revision+1,savedAt:new Date().toISOString(),state},'current');
+      };
     };
     await done;
     revision += 1;
     if(syncHooks&&collaboration)syncHooks.committed(collaboration);
-    status('Guardado en este equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
+    status('Guardado en este celular / equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
   }
   function bindState(fn) { getter = fn; }
+  function queueCheckpoint(store,saved,index,reason){
+    if(!saved?.state)return null;
+    const createdAt=new Date().toISOString(),id=crypto.randomUUID(),day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const bytes=JSON.stringify(saved.state).length*2,entry={id,createdAt,day,reason:reason.slice(0,500),appVersion:saved.state.appVersion||'',orders:saved.state.orders?.length||0,garments:(saved.state.orders||[]).reduce((n,o)=>n+(o.rows||[]).reduce((m,r)=>m+r.qty,0),0),bytes};
+    const list=[...(index||[]),entry];store.put({...saved,...entry},'backup:'+id);
+    while(list.length>8||(list.length>1&&list.reduce((n,b)=>n+(b.bytes||0),0)>64*1024*1024)){const old=list.shift();store.delete('backup:'+old.id);}
+    store.put(list,'backup-index');return entry;
+  }
+  async function checkpoint(reason='Respaldo solicitado'){
+    await flush();const database=await open(),tx=database.transaction('snapshots','readwrite'),done=completion(tx),store=tx.objectStore('snapshots');let entry;
+    const current=store.get('current');current.onsuccess=()=>{const index=store.get('backup-index');index.onsuccess=()=>{entry=queueCheckpoint(store,current.result,index.result,reason);};};
+    await done;return entry;
+  }
+  async function listCheckpoints(){const database=await open();return ((await request(database.transaction('snapshots').objectStore('snapshots').get('backup-index')))||[]).slice().reverse();}
+  async function readCheckpoint(id){if(typeof id!=='string'||!/^[a-f0-9-]{36}$/.test(id))throw Error('Respaldo inválido.');const database=await open(),value=await request(database.transaction('snapshots').objectStore('snapshots').get('backup:'+id));if(!value?.state)throw Error('Este respaldo ya no está disponible.');return value;}
   async function switchScope(name){await flush();clearTimeout(timer);await saving.catch(()=>{});getter=null;syncHooks=null;if(db)db.close();db=null;revision=0;DB_NAME=name;return load();}
   async function readAux(key='collaboration'){const database=await open();return request(database.transaction('snapshots').objectStore('snapshots').get(key));}
   function setSyncHooks(hooks){syncHooks=hooks;}
@@ -77,7 +97,7 @@
       image(q.images.front) && image(q.images.back) && validDesigns(q.additionalDesigns) && validShipping(q.shippingQuote) &&
       q.rows.every(r=>['Butarga','Playera','Short'].includes(r.product)&&['Hombre','Mujer'].includes(r.cut)&&text(r.size,30)&&number(r.price)&&number(r.amount)&&Number.isInteger(r.qty)&&r.qty>=1&&r.qty<=10000) &&
       ['subtotal','iva','total','retention','net'].every(k=>number(q.tax[k])) &&
-      ['pending','PF','PM'].includes(q.tax.payerType) && ['included','added'].includes(q.tax.mode) &&
+      ['pending','PF','PM'].includes(q.tax.payerType) && ['none','added','included'].includes(q.tax.mode) &&
       Object.values(q.issuer).every(v=>text(v,1000)) && Object.values(q.fiscal).every(v=>text(v,1000)) &&
       (!q.issuedAt||(text(q.issuedAt,40)&&Number.isFinite(Date.parse(q.issuedAt)))) &&
       (!q.documentVersion||(Number.isInteger(q.documentVersion)&&q.documentVersion>0));
@@ -103,8 +123,9 @@
       for(const key of ['rfc','name','cp','regime','use','form','method'])if(!text(order.fiscal[key],1000))throw Error('Datos fiscales del receptor inválidos.');
       if (rowCount>10000 || !number(order.advance) || !number(order.advanceIsr||0) || !['pending','PF','PM'].includes(order.payerType)) throw Error('Importes o tipo fiscal inválidos.');
       if(order.advanceRecord&&(!number(order.advanceRecord.amount)||!number(order.advanceRecord.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(order.advanceRecord.date)))throw Error('Anticipo validado inválido.');
-      if (!['included','added'].includes(order.vatMode) || !order.images || !image(order.images.front) || !image(order.images.back)) throw Error('IVA o imágenes inválidos.');
-      if(order.quoteStatus!==undefined&&!['active','discarded'].includes(order.quoteStatus))throw Error('Estado de cotización inválido.');
+      if (!['none','added','included'].includes(order.vatMode) || !order.images || !image(order.images.front) || !image(order.images.back)) throw Error('IVA o imágenes inválidos.');
+      if(order.quoteStatus!==undefined&&!['active','discarded','cancelled'].includes(order.quoteStatus))throw Error('Estado de cotización inválido.');
+      if(!ProwayOperations.validQuality(order.quality,order.rows)||!ProwayOperations.validRefunds(order)||!ProwayOperations.validCancellation(order.cancellation,order.quoteStatus)||!ProwayOperations.validMilestones(order.milestones))throw Error('Calidad, cancelación, devoluciones o fechas inválidas.');
       if(!validShipping(order.shippingQuote)||!validPlans(order.plannedCosts))throw Error('Envío o costos previstos inválidos.');
       if(!validDesigns(order.additionalDesigns))throw Error('Diseños adicionales inválidos.');
       if (!Array.isArray(order.payments) || order.payments.some(p=>!text(p.id,64)||!number(p.amount)||!number(p.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(p.date))) throw Error('Registro de pagos inválido.');
@@ -131,7 +152,7 @@
     if(value.expenses!==undefined){
       const ids=new Set(),categories=['Hilos','Tela','Reparación de máquina','Costura','Sublimación y corte','Envío','Otro'];
       if(!Array.isArray(value.expenses)||value.expenses.length>10000)throw Error('Registro de egresos inválido.');
-      for(const e of value.expenses){if(!identifier(e.id)||ids.has(e.id)||!number(e.amount)||e.amount<=0||!categories.includes(e.category)||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)||new Date(e.date+'T12:00:00Z').toISOString().slice(0,10)!==e.date||!(e.client===''||identifier(e.client))||!text(e.note,500))throw Error('Egreso inválido.');ids.add(e.id);}
+      for(const e of value.expenses){if(e.baseAmount!==undefined&&(!number(e.baseAmount)||!number(e.iva)||Math.abs(e.amount-e.baseAmount-e.iva)>.011))throw Error('Base e IVA del egreso inválidos.');if(!identifier(e.id)||ids.has(e.id)||!number(e.amount)||e.amount<=0||!categories.includes(e.category)||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)||new Date(e.date+'T12:00:00Z').toISOString().slice(0,10)!==e.date||!(e.client===''||identifier(e.client))||!text(e.note,500))throw Error('Egreso inválido.');ids.add(e.id);}
     }
     return value;
   }
@@ -156,7 +177,7 @@
     if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(clean(title),margin,40);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean(rev.client+' · '+rev.name+' · v'+rev.version),margin,47);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((rev.source==='finanzas'?'Pedidos seleccionados':rev.client)+' · '+rev.name+' · v'+rev.version),margin,47);
     doc.text(new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}),width-margin,18,{align:'right'});}
     let y = 54;
     const line = (label,value,bold=false) => {
@@ -174,9 +195,9 @@
       const q = rev.quote, t = q.tax;
       doc.setTextColor(128,73,9); doc.text('Cotización / proforma - Sin timbrar. No es CFDI.',margin,y); y+=8; doc.setTextColor(30,40,50);
       const shipping=q.shippingQuote||{amount:0,description:''},sourceRows=[...q.rows,...(shipping.amount>0||shipping.description?[{product:'Envío',size:shipping.description,cut:'',qty:1,price:shipping.amount,amount:shipping.amount}]:[])];
-      const show=q.showVat!==false,rows=sourceRows.map(r=>({...r,price:!show&&t.mode==='added'?Math.round(r.price*116)/100:r.price,amount:!show&&t.mode==='added'?Math.round(r.amount*116)/100:r.amount}));
+      const show=t.mode!=='none'&&q.showVat!==false,rows=sourceRows.map(r=>({...r,price:!show&&t.mode==='added'?Math.round(r.price*116)/100:r.price,amount:!show&&t.mode==='added'?Math.round(r.amount*116)/100:r.amount}));
       if(!show&&rows.length)rows.at(-1).amount=Math.round((rows.at(-1).amount+t.total-rows.reduce((s,r)=>s+r.amount,0))*100)/100;
-      paragraphs('Cliente: '+q.name+(q.contact?' / '+q.contact:'')+'\nPrendas: '+q.rows.reduce((s,r)=>s+r.qty,0)+(show?'\nPrecios '+(t.mode==='included'?'con IVA incluido':'antes de IVA')+' en MXN.':'\nPrecios finales en MXN.'));
+      paragraphs('Cliente: '+q.name+(q.contact?' / '+q.contact:'')+'\nPrendas: '+q.rows.reduce((s,r)=>s+r.qty,0)+(show?'\nPrecios '+(t.mode==='included'?'del documento original':'antes de IVA')+' en MXN.':'\nPrecios finales en MXN.'));
       doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[['Producto / talla / corte','Cantidad','P. unitario','Importe']],body:rows.map(r=>[clean(r.product+(r.size?' / '+r.size:'')+(r.cut?' / '+r.cut:'')),r.qty,money(r.price),money(r.amount)]),styles:{font:'helvetica',fontSize:9,cellPadding:3},headStyles:{fillColor:[23,105,64]},columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
       y=doc.lastAutoTable.finalY+10;
       if(show){line('Subtotal sin IVA',t.subtotal);line('IVA 16%',t.iva);line('Total antes de retenciones',t.total,true);if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}else if(t.payerType==='pending')paragraphs('Tipo fiscal del cliente pendiente de confirmar.');}
@@ -223,16 +244,16 @@
         y+=imageHeight+16;
       }
     }
-    for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);doc.text('Proway · '+(quote?'Cotización sin timbrar':'Documento de trabajo'),margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
+    for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quote){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
     return doc.output('blob');
   }
   async function excel(rev,title) {
     const wb=new ExcelJS.Workbook();wb.creator='Proway';wb.created=new Date();
     const sheet=wb.addWorksheet('Documento'), d=rev.data;
-    sheet.addRow(['','',title]);sheet.addRow(['','',rev.client+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
+    sheet.addRow(['','',title]);sheet.addRow(['','',(rev.source==='finanzas'?'Pedidos seleccionados':rev.client)+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
     sheet.mergeCells('A1:B3');
     const mark=wb.addImage({base64:logoData(),extension:'png'});sheet.addImage(mark,{tl:{col:0,row:0},ext:{width:170,height:54}});
-    if(rev.source==='cotizacion')sheet.addRow(['Cotización / proforma - sin timbrar. No es CFDI.']);
+    if(rev.source==='cotizacion'){sheet.addRow(['Cotización / proforma - sin timbrar. No es CFDI.']);sheet.addRow([{text:'proway.com.mx',hyperlink:'https://proway.com.mx'},{text:'WhatsApp: 33 1007 9695',hyperlink:'https://wa.me/523310079695'}]);}
     sheet.addRow([]);const header=sheet.addRow(d.heads);
     header.eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF172A3D'}};cell.font={bold:true,color:{argb:'FFFFFFFF'},size:12};});
     const firstRow=header.number+1;
@@ -250,41 +271,44 @@
       const total='('+at('Sublimación')+'+'+at('Corte')+')';
       formula('Sublimación','IF(COUNT(F'+firstRow+':F'+lastRow+')<ROWS(F'+firstRow+':F'+lastRow+'),"Tarifa pendiente",SUM(H'+firstRow+':H'+lastRow+'))');
       formula('Corte','SUM(I'+firstRow+':I'+lastRow+')');
-      formula('Subtotal','IF(ISNUMBER('+at('Sublimación')+'),IF('+mode+'="IVA incluido",ROUND('+total+'/1.16,2),'+total+'),"Pendiente")');
+      formula('Subtotal','IF(ISNUMBER('+at('Sublimación')+'),'+total+',"Pendiente")');
       formula('Total a pagar','IF(ISNUMBER('+at('Sublimación')+'),IF('+mode+'="Precios más IVA",ROUND('+total+'*1.16,2),'+total+'),"Tarifa pendiente")');
       formula('IVA','IF(ISNUMBER('+at('Subtotal')+'),'+at('Total a pagar')+'-'+at('Subtotal')+',"Pendiente")');
-      sheet.getCell(mode).dataValidation={type:'list',allowBlank:false,formulae:['"Sin IVA adicional,Precios más IVA,IVA incluido"']};sheet.getCell(mode).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};wb.calcProperties.fullCalcOnLoad=true;
+      sheet.getCell(mode).dataValidation={type:'list',allowBlank:false,formulae:['"Sin IVA adicional,Precios más IVA"']};sheet.getCell(mode).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};wb.calcProperties.fullCalcOnLoad=true;
       sheet.addRow(['Editar celdas verdes: cantidad, tarifa y corte. Los totales se recalculan en Excel o Google Sheets.']);
     }
     if(rev.source==='finanzas'){
       const at=label=>'B'+summaries.get(label),set=(label,formula)=>{const c=sheet.getCell(at(label));c.value={formula,result:c.value};};
-      set('Cobrado y validado',d.rows.length?'SUM(E'+firstRow+':E'+lastRow+')':'0');
-      set('Egresos registrados',d.rows.length?'SUM(F'+firstRow+':F'+lastRow+')':'0');
+      set('Cobros originales',d.rows.length?'SUM(E'+firstRow+':E'+lastRow+')':'0');
+      set('Devoluciones pagadas',d.rows.length?'SUMIF(A'+firstRow+':A'+lastRow+',"Devolución",F'+firstRow+':F'+lastRow+')':'0');
+      set('Cobrado y validado',at('Cobros originales')+'-'+at('Devoluciones pagadas'));
+      set('Egresos registrados',d.rows.length?'SUMIF(A'+firstRow+':A'+lastRow+',"Egreso",F'+firstRow+':F'+lastRow+')':'0');
       set('Disponible de cobros',at('Cobrado y validado')+'-'+at('Egresos registrados'));wb.calcProperties.fullCalcOnLoad=true;
       sheet.addRow(['Control a la fecha de exportación. Al editar ingresos o egresos se recalculan los totales de efectivo.']);
     }
-    if(rev.source==='cotizacion'&&d.rows.length&&rev.quote?.showVat===false){
+    if(rev.source==='cotizacion'&&rev.quote?.tax.mode!=='included'&&d.rows.length&&rev.quote?.showVat===false){
       const at=label=>'B'+summaries.get(label),sum='SUM(F'+firstRow+':F'+lastRow+')';
       const formula=(label,f)=>{const cell=sheet.getCell(at(label));cell.value={formula:f,result:cell.value};};
       // The final line absorbs invoice rounding; precise final unit prices stay editable.
       const last=sheet.getRow(lastRow),previous=lastRow>firstRow?'SUM(F'+firstRow+':F'+(lastRow-1)+')':'0';
       last.getCell(6).value={formula:'ROUND(SUMPRODUCT(D'+firstRow+':D'+lastRow+',E'+firstRow+':E'+lastRow+'),2)-'+previous,result:d.rows.at(-1)[5]};
-      formula('Total de la cotización',sum);if(rev.quote.tax.payerType==='PM'){formula('Retención ISR 1.25%','ROUND('+at('Total de la cotización')+'/1.16*0.0125,2)');formula('Neto a pagar',at('Total de la cotización')+'-'+at('Retención ISR 1.25%'));}formula('Saldo a pagar','MAX(0,'+at(rev.quote.tax.payerType==='PM'?'Neto a pagar':'Total de la cotización')+'-'+at('Anticipo y pagos recibidos')+')');wb.calcProperties.fullCalcOnLoad=true;
-    }else if(rev.source==='cotizacion'&&d.rows.length){
+      formula('Total de la cotización',sum);if(rev.quote.tax.payerType==='PM'){formula('Retención ISR 1.25%','ROUND('+at('Total de la cotización')+'*0.0125,2)');formula('Neto a pagar',at('Total de la cotización')+'-'+at('Retención ISR 1.25%'));}formula('Saldo a pagar','MAX(0,'+at(rev.quote.tax.payerType==='PM'?'Neto a pagar':'Total de la cotización')+'-'+at('Anticipo y pagos recibidos')+')');wb.calcProperties.fullCalcOnLoad=true;
+    }else if(rev.source==='cotizacion'&&rev.quote?.tax.mode!=='included'&&d.rows.length){
       const at=label=>'B'+summaries.get(label),sum='SUM(F'+firstRow+':F'+lastRow+')';
       const formula=(label,f)=>{const cell=sheet.getCell(at(label));cell.value={formula:f,result:cell.value};};
       const mode=at('Precios'),kind=at('Tipo de cliente');
-      sheet.getCell(mode).dataValidation={type:'list',allowBlank:false,formulae:['"IVA incluido,Más IVA"']};sheet.getCell(kind).dataValidation={type:'list',allowBlank:false,formulae:['"Persona física,Persona moral,Pendiente de confirmar"']};
+      sheet.getCell(mode).dataValidation={type:'list',allowBlank:false,formulae:['"Precio base,Más IVA"']};sheet.getCell(kind).dataValidation={type:'list',allowBlank:false,formulae:['"Persona física,Persona moral,Pendiente de confirmar"']};
       for(const cell of [mode,kind])sheet.getCell(cell).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};
-      formula('Subtotal','IF('+mode+'="IVA incluido",ROUND('+sum+'/1.16,2),'+sum+')');
-      formula('Total antes de retenciones','IF('+mode+'="IVA incluido",'+sum+',ROUND('+sum+'*1.16,2))');
+      formula('Subtotal',sum);
+      formula('Total antes de retenciones','IF('+mode+'="Más IVA",ROUND('+sum+'*1.16,2),'+sum+')');
       formula('IVA 16%',at('Total antes de retenciones')+'-'+at('Subtotal'));
       formula('Retención ISR 1.25%','IF('+kind+'="Persona moral",ROUND('+at('Subtotal')+'*0.0125,2),0)');
       formula('Neto estimado',at('Total antes de retenciones')+'-'+at('Retención ISR 1.25%'));
       formula('Saldo neto estimado','MAX(0,'+at('Neto estimado')+'-'+at('Depósitos')+')');
       wb.calcProperties.fullCalcOnLoad=true;
     }
-    if(rev.quote&&rev.quote.showVat!==false){const q=rev.quote;sheet.addRow([]);for(const row of [['Emisor',q.issuer.name],['RFC emisor',q.issuer.rfc],['C. P. emisor',q.issuer.cp],['Régimen emisor',q.issuer.regime],['RFC receptor',q.fiscal.rfc],['Nombre fiscal receptor',q.fiscal.name],['C. P. receptor',q.fiscal.cp],['Régimen receptor',q.fiscal.regime],['Uso CFDI',q.fiscal.use],['Forma de pago',q.fiscal.form],['Método de pago',q.fiscal.method]])sheet.addRow(row);}
+    if(rev.quote&&rev.quote.tax.mode!=='none'&&rev.quote.showVat!==false){const q=rev.quote;sheet.addRow([]);for(const row of [['Emisor',q.issuer.name],['RFC emisor',q.issuer.rfc],['C. P. emisor',q.issuer.cp],['Régimen emisor',q.issuer.regime],['RFC receptor',q.fiscal.rfc],['Nombre fiscal receptor',q.fiscal.name],['C. P. receptor',q.fiscal.cp],['Régimen receptor',q.fiscal.regime],['Uso CFDI',q.fiscal.use],['Forma de pago',q.fiscal.form],['Método de pago',q.fiscal.method]])sheet.addRow(row);}
+    if(rev.source==='cotizacion'&&rev.quote?.tax.mode==='included')sheet.addRow(['Documento histórico: se conservan los importes emitidos. Para recotizar usa los precios base de la app.']);
     sheet.columns.forEach((col,i)=>{col.width=Math.min(42,Math.max(15, String(d.heads[i]||'').length+4));col.alignment={vertical:'top',wrapText:true};});
     sheet.views=[{state:'frozen',ySplit:header.number}];sheet.pageSetup={paperSize:9,orientation:d.heads.length>6?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     if(rev.source==='pedido'){
@@ -374,7 +398,7 @@
       const waiting=()=>{if(registration.waiting&&navigator.serviceWorker.controller)update.hidden=false;};waiting();
       registration.addEventListener('updatefound',()=>registration.installing?.addEventListener('statechange',waiting));
       let updateRequested=false,refreshing=false;
-      update?.addEventListener('click',async()=>{await flush();if(registration.waiting){updateRequested=true;registration.waiting.postMessage({type:'ACTIVATE_UPDATE'});}});
+      update?.addEventListener('click',async()=>{try{await checkpoint('Antes de actualizar la app');if(registration.waiting){updateRequested=true;registration.waiting.postMessage({type:'ACTIVATE_UPDATE'});}}catch(e){status('No se pudo preparar el respaldo: '+e.message);}});
       navigator.serviceWorker.addEventListener('controllerchange',()=>{if(updateRequested&&!refreshing){refreshing=true;location.reload();}});
     }
     window.addEventListener('online',()=>status('Con conexión · guardado local activo'));
@@ -382,5 +406,5 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden)flush().catch(()=>{});});
     if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
   }
-  window.ProwayPlatform={load,bindState,changed,flush,switchScope,readAux,setSyncHooks,backup,readBackup,validateState,download,pdf,excel,blankCustomerTemplate,readExcel,optimizeImage,quoteLink,readQuote,shareFile,install,status};
+  window.ProwayPlatform={load,bindState,changed,flush,switchScope,readAux,setSyncHooks,checkpoint,listCheckpoints,readCheckpoint,backup,readBackup,validateState,download,pdf,excel,blankCustomerTemplate,readExcel,optimizeImage,quoteLink,readQuote,shareFile,install,status};
 })();

@@ -9,6 +9,6 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
    c.drawImage(image,30,0,134,139,116,64,280,290);c.fillStyle='#172a20';c.textAlign='center';c.font='bold 44px Arial';c.fillText('PROWAY',256,395);
    return {size,data:canvas.toDataURL('image/png').split(',')[1]};
   });},source);
-  for(const icon of icons)fs.writeFileSync(path.join(root,'www/prueba/icons/prueba-'+icon.size+'.png'),Buffer.from(icon.data,'base64'));
+  for(const icon of icons){const bytes=Buffer.from(icon.data,'base64');fs.writeFileSync(path.join(root,'www/prueba/icons/prueba-'+icon.size+'.png'),bytes);for(const name of ['icon-white-'+icon.size+'.png','icon-white-v16-'+icon.size+'.png'])fs.writeFileSync(path.join(root,'www/icons',name),bytes);}
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

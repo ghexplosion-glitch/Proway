@@ -15,16 +15,16 @@
     return keys.length===other.length&&keys.every(k=>Object.hasOwn(b,k)&&equal(a[k],b[k]));
   }
   const clone=x=>structuredClone(x);
-  const orderDefaults={quoteStatus:'active',shippingQuote:{amount:0,description:''},plannedCosts:{fabric:0,sewing:0,shipping:0,other:0}};
+  const orderDefaults={quoteStatus:'active',shippingQuote:{amount:0,description:''},plannedCosts:{fabric:0,sewing:0,shipping:0,other:0},cancellation:{date:'',reason:''},refunds:[],quality:{counts:{},names:false,design:false,notes:'',checkedAt:''},milestones:{design:'',sewing:'',packing:'',shipping:''}};
   function normalizeOrder(o){return {...clone(orderDefaults),...o,additionalDesigns:o.additionalDesigns||[]};}
   function settings(state){return Object.fromEntries(settingKeys.map(k=>[k,clone(state[k]??(['designs','expenses'].includes(k)?[]:null))]));}
   function difference(data,base){const patch={},expected={};for(const k of Object.keys(data)){if(k==='additionalDesigns'&&equal(data[k]??[],base?.[k]??[]))continue;if(Object.hasOwn(orderDefaults,k)&&equal(data[k]??orderDefaults[k],base?.[k]??orderDefaults[k]))continue;if(!equal(data[k],base?.[k])){patch[k]=clone(data[k]);expected[k]=clone(base?.[k]??null);}}return {patch,expected};}
   function guardsFor(patch,base){
     const guards={};if(!base)return guards;
-    const critical=['rows','images','additionalDesigns','name','contact','phone','address','orderDate','dataOk','confirmed','designOk','paymentOk','advance','advanceDate','advanceIsr','advanceRecord','payments','payerType','vatMode','startDate','quoteStatus','shippingQuote'];
+    const critical=['rows','images','additionalDesigns','name','contact','phone','address','orderDate','dataOk','confirmed','designOk','paymentOk','advance','advanceDate','advanceIsr','advanceRecord','payments','payerType','vatMode','startDate','quoteStatus','shippingQuote','refunds','cancellation'];
     let keys=[];
-    if(critical.some(k=>Object.hasOwn(patch,k)))keys=['dataOk','confirmed','designOk','paymentOk','startDate','released','sewn','packed','shipped','delivered','quoteStatus','shippingQuote','advanceRecord','payments'];
-    else if(['released','sewn','packed','shipped','delivered','shipment'].some(k=>Object.hasOwn(patch,k)))keys=['rows','images','additionalDesigns','startDate','released','sewn','packed','shipped','delivered','quoteStatus','shippingQuote'];
+    if(critical.some(k=>Object.hasOwn(patch,k)))keys=['dataOk','confirmed','designOk','paymentOk','startDate','released','sewn','packed','shipped','delivered','quoteStatus','shippingQuote','advanceRecord','payments','refunds','cancellation','quality'];
+    else if(['released','sewn','packed','shipped','delivered','shipment','quality','milestones'].some(k=>Object.hasOwn(patch,k)))keys=['rows','images','additionalDesigns','startDate','released','sewn','packed','shipped','delivered','quoteStatus','shippingQuote','refunds','cancellation','quality'];
     for(const k of keys)if(!Object.hasOwn(patch,k))guards[k]=clone(base[k]??null);
     return guards;
   }

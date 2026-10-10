@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Proway Pedidos",
   "short_name": "Proway",
-  "description": "Pedidos, cotización, producción y entrega. Datos guardados en el equipo.",
+  "description": "Pedidos, cotización, dinero, producción y entrega. Colaboración al recuperar internet.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -10,7 +10,17 @@
   "theme_color": "#ffffff",
   "lang": "es-MX",
   "icons": [
-    {"src":"icons/icon-white-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
-    {"src":"icons/icon-white-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {
+      "src": "icons/icon-white-v16-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-white-v16-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }
