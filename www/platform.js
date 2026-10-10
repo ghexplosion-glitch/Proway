@@ -90,11 +90,12 @@
   }
   function validShipping(s){return s===undefined||!!s&&typeof s==='object'&&!Array.isArray(s)&&number(s.amount)&&text(s.description,200)&&Object.keys(s).every(k=>['amount','description'].includes(k));}
   function validPlans(s){return s===undefined||!!s&&typeof s==='object'&&!Array.isArray(s)&&['fabric','sewing','shipping','other'].every(k=>number(s[k]))&&Object.keys(s).every(k=>['fabric','sewing','shipping','other'].includes(k));}
+  function validReviewRows(rows){return rows===undefined||Array.isArray(rows)&&rows.length<=10000&&rows.every(r=>r&&['Butarga','Playera','Short'].includes(r.product)&&['Hombre','Mujer'].includes(r.cut)&&text(r.size,30)&&Number.isInteger(r.qty)&&r.qty>=1&&r.qty<=10000&&text(r.color,1000)&&text(r.printed,1000));}
   function validQuote(q) {
     return !!q && identifier(q.id) && text(q.name,200) && text(q.contact||'',200) &&
       ['pending','PF','PM'].includes(q.payerType) && number(q.advance) && number(q.balance) &&
       Array.isArray(q.rows) && q.rows.length<=10000 && q.tax && q.issuer && q.fiscal && q.images &&
-      image(q.images.front) && image(q.images.back) && validDesigns(q.additionalDesigns) && validShipping(q.shippingQuote) &&
+      image(q.images.front) && image(q.images.back) && validDesigns(q.additionalDesigns) && validShipping(q.shippingQuote) && validReviewRows(q.reviewRows) &&
       q.rows.every(r=>['Butarga','Playera','Short'].includes(r.product)&&['Hombre','Mujer'].includes(r.cut)&&text(r.size,30)&&number(r.price)&&number(r.amount)&&Number.isInteger(r.qty)&&r.qty>=1&&r.qty<=10000) &&
       ['subtotal','iva','total','retention','net'].every(k=>number(q.tax[k])) &&
       ['pending','PF','PM'].includes(q.tax.payerType) && ['none','added','included'].includes(q.tax.mode) &&
@@ -203,6 +204,13 @@
       if(show){line('Subtotal sin IVA',t.subtotal);line('IVA 16%',t.iva);line('Total antes de retenciones',t.total,true);if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}else if(t.payerType==='pending')paragraphs('Tipo fiscal del cliente pendiente de confirmar.');}
       else {line('Total de la cotización',t.total,true);if(t.payerType==='PM'){line('Menos retención ISR 1.25%',-t.retention);line('Neto a pagar',t.net,true);}}
       line('Anticipo y pagos recibidos',q.advance);line('Saldo a pagar',q.balance,true);
+      if(q.reviewRows?.length){
+        if(y>height-52){doc.addPage();y=22;}
+        doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Prendas para revisar',margin,y);y+=7;
+        paragraphs('Revisa el color y el nombre exactamente como quieres que se impriman.');
+        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[['Prenda / talla / corte','Cant.','Color','Nombre impreso']],body:q.reviewRows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,clean(r.color||'Por confirmar'),clean(r.printed||'Sin nombre indicado')]),styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{0:{cellWidth:58},1:{cellWidth:16,halign:'right'},2:{cellWidth:30},3:{cellWidth:width-2*margin-104}}});
+        y=doc.lastAutoTable.finalY+10;
+      }
       if(show)paragraphs('Emisor: '+(q.issuer.name||'Nombre fiscal pendiente')+' | RFC: '+(q.issuer.rfc||'Pendiente')+' | C. P.: '+(q.issuer.cp||'Pendiente')+'\nRégimen: '+q.issuer.regime+' · Persona física\nReceptor: '+(q.fiscal.name||q.name)+' | RFC: '+(q.fiscal.rfc||'Pendiente')+' | C. P.: '+(q.fiscal.cp||'Pendiente')+'\nRégimen receptor: '+(q.fiscal.regime||'Pendiente')+' | Uso CFDI: '+(q.fiscal.use||'Pendiente')+'\nForma de pago: '+(q.fiscal.form||'Pendiente')+' | Método: '+(q.fiscal.method||'Pendiente'));
       paragraphs('Plazo aproximado: 20 días hábiles desde el inicio validado, después de aprobar pedido, cotización, diseño y anticipo. Tiempo de paquetería por confirmar.');
       if(q.due)paragraphs('Entrega de producción estimada: '+new Date(q.due+'T12:00:00Z').toLocaleDateString('es-MX',{timeZone:'UTC'}));
@@ -366,12 +374,12 @@
     const original=[q.images,...(q.additionalDesigns||[]).map(d=>d.images)],target=[quote.images,...(quote.additionalDesigns||[]).map(d=>d.images)];
     for(const [max,quality] of [[180,.48],[120,.42],[80,.32],[60,.28]]){
       for(let i=0;i<original.length;i++)for(const side of ['front','back'])if(original[i][side])target[i][side]=await optimizeImage(original[i][side],max,quality);
-      const bytes=new TextEncoder().encode(JSON.stringify(quote)),stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+      const bytes=new TextEncoder().encode(JSON.stringify(quote));if(bytes.length>200000)continue;const stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
       const compressed=new Uint8Array(await new Response(stream).arrayBuffer());let binary='';for(const b of compressed)binary+=String.fromCharCode(b);
       const encoded=btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
       if(encoded.length<=20000)return location.origin+location.pathname+'#cot='+encoded;
     }
-    throw Error('Los diseños ocupan demasiado para un enlace. Comparte el PDF con todas las imágenes.');
+    throw Error('El detalle del pedido y sus diseños ocupan demasiado para un enlace. Comparte el PDF o Excel con todas las prendas.');
   }
 
   async function readQuote() {

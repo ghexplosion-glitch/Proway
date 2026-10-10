@@ -1,4 +1,4 @@
-const VERSION='proway-v1.6.1';
+const VERSION='proway-v1.6.2';
 const ASSETS=['./','index.html','app.css','app.js','platform.js','cloud-config.js','operations.js','collaboration-core.js','collaboration.js','extras.js','finance.js','labels.js','logo.png','manifest.webmanifest','icons/icon-white-v16-192.png','icons/icon-white-v16-512.png','vendor/lucide.min.js','vendor/jspdf.umd.min.js','vendor/jspdf.plugin.autotable.min.js','vendor/exceljs.min.js','vendor/supabase.min.js','designs/rojo-front.png','designs/rojo-back.png','designs/azul-front.png','designs/azul-back.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('proway-v')&&key!==VERSION).map(key=>caches.delete(key)))),self.clients.claim()])));

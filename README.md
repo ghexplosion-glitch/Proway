@@ -1,4 +1,6 @@
-# Proway Pedidos 1.6.1
+# Proway Pedidos 1.6.2
+
+La versión 1.6.2 agrega **Prendas para revisar** a la cotización: producto, talla, corte, cantidad, color y nombre impreso de cada fila de Pedido. El detalle aparece en la vista previa, PDF, enlace del cliente y la hoja **Prendas para revisión** del Excel, tanto con IVA como sin desglose. Los precios mantienen su resumen por talla y corte. Los documentos y enlaces emitidos antes de la actualización conservan su versión original; para enviar el nuevo detalle hay que generar una cotización nueva desde el pedido.
 
 La versión 1.6.1 elimina el resumen contable duplicado de **Taller sublimación → Precios**, que incluía cotizaciones descartadas en el total. Esa pantalla conserva precio general y datos fiscales, con un acceso a **Dinero** para consultar y exportar los totales de la selección. Las cotizaciones descartadas permanecen en Historial y los pedidos, cobros y gastos guardados se conservan.
 
