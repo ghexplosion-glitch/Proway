@@ -189,3 +189,17 @@ Las bibliotecas están incluidas en `www/vendor` con sus licencias. La app no ne
 Aplica **backend/proway-operations.sql** a una base 1.4 antes de publicar www 1.6. Reemplaza solo validadores/helpers privados, sin reescribir pedidos ni cambiar tablas o permisos. Los clientes anteriores mantienen compatibilidad de lectura; una nueva liberación de empaque requiere actualizar para completar Calidad. **backend/test-operations.sql** y **backend/test-quote-profit.sql** comprueban servidor, permisos y conservación en transacciones sintéticas que terminan en rollback.
 
 **npm test** comprueba actualización de IndexedDB, cotizaciones, documentos, costos, efectivo, colores, diseños, etiquetas, cancelación/devolución, calidad, fechas, respaldos y dos dispositivos con el SDK real de Supabase contra un servidor HTTP simulado. Ninguna prueba usa cuentas ni pedidos reales.
+
+
+## Propuesta local posterior a v1.7.0
+
+Esta copia prepara una revisión; no se ha enviado a producción ni modifica registros compartidos.
+
+- Extras: editor cerrado, opciones y cantidad vacías, revisión de cliente/costo antes de confirmar. Cambiar de cliente no guarda extras. Se comprueba el pedido y la cuenta al confirmar.
+- Tarifas pendientes: producto, talla, corte, cantidad, origen y cliente; acceso para completar una tarifa o revisar los extras guardados. El lote muestra sus clientes seleccionados y conserva su selección independiente del cliente activo.
+- Entrega: dirección, contacto y teléfono editables por administración en Envío, con los mismos datos que Pedido. Corregirlos conserva las validaciones de producción. Se muestran los campos que faltan para registrar la salida.
+- Calidad: listado esperado y casillas de revisión. Se conserva el formato previo de verificaciones, la fecha de validación y los pedidos ya empacados. No se recapturan cantidades. La casilla de cada grupo confirma también acabados, costuras y etiqueta; nombres/tallas/corte y diseño/colores tienen controles propios.
+- Folio de nuevas cotizaciones: `PRW-2026-1234567890AB`. El sufijo aleatorio permite crear desde dos equipos sin un contador compartido; no es una numeración consecutiva. Aprobar no crea otro pedido ni cambia su folio. Repetir genera uno nuevo. Los folios y documentos históricos se conservan.
+- Touch: gesto lateral entre departamentos del taller; se ignoran campos, botones, imágenes, etiquetas y tablas desplazables. El desplazamiento vertical permanece disponible.
+
+`tests/proposal-workflow.cjs` usa pedidos ficticios, un origen aislado y bloquea cualquier llamada a Supabase. Comprueba guardado explícito de extras, selección independiente de lotes, conservación de avances al editar envío, validación de calidad, folios y gestos táctiles reales.

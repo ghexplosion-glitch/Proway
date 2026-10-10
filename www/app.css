@@ -335,3 +335,17 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-pending-job strong{display:block;font-size:15px}
 #pia-offline-app .pia-pending-job small{display:block;margin-top:5px;font-size:13px;line-height:1.5}
 #pia-offline-app .pia-pending-job.late{border-color:#d98536;background:var(--pia-warn)}
+
+/* Proposal: checkbox review and deliberate touch navigation. */
+#pia-offline-app .pia-quality-row input[type=checkbox]{width:22px;height:22px;flex:0 0 22px;padding:0;accent-color:var(--pia-green)}
+#pia-offline-app .pia-work-content{touch-action:pan-y}
+#pia-offline-app .pia-doc-table-wrap,#pia-offline-app .pia-work-content input,#pia-offline-app .pia-work-content textarea,#pia-offline-app .pia-work-content select{touch-action:auto}
+
+#pia-offline-app .pia-missing-item{display:grid;gap:8px;margin:12px 0;padding:12px 0;border-bottom:1px solid var(--pia-line)}
+#pia-offline-app .pia-missing-item button{max-width:100%;white-space:normal}
+#pia-offline-app .pia-extra-review{margin-top:14px}
+#pia-offline-app .pia-doc-id{overflow-wrap:anywhere}
+
+#pia-offline-app .pia-department-deadlines>.pia-panel{margin:12px 0 0;padding:0;border:0;background:transparent;box-shadow:none}
+#pia-offline-app .pia-quality-row span{font-size:15px;line-height:1.45}
+#pia-offline-app .pia-quality-row small{font-size:13px}

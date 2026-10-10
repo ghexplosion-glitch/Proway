@@ -21,10 +21,11 @@
   function difference(data,base){const patch={},expected={};for(const k of Object.keys(data)){if(k==='additionalDesigns'&&equal(data[k]??[],base?.[k]??[]))continue;if(Object.hasOwn(orderDefaults,k)&&equal(data[k]??orderDefaults[k],base?.[k]??orderDefaults[k]))continue;if(!equal(data[k],base?.[k])){patch[k]=clone(data[k]);expected[k]=clone(base?.[k]??null);}}return {patch,expected};}
   function guardsFor(patch,base){
     const guards={};if(!base)return guards;
-    const critical=['rows','images','additionalDesigns','name','contact','phone','address','orderDate','dataOk','confirmed','designOk','paymentOk','advance','advanceDate','advanceIsr','advanceRecord','payments','payerType','vatMode','startDate','quoteStatus','shippingQuote','refunds','cancellation'];
+    const critical=['rows','images','additionalDesigns','name','orderDate','dataOk','confirmed','designOk','paymentOk','advance','advanceDate','advanceIsr','advanceRecord','payments','payerType','vatMode','startDate','quoteStatus','shippingQuote','refunds','cancellation'];
     let keys=[];
     if(critical.some(k=>Object.hasOwn(patch,k)))keys=['dataOk','confirmed','designOk','paymentOk','startDate','released','sewn','packed','shipped','delivered','quoteStatus','shippingQuote','advanceRecord','payments','refunds','cancellation','quality'];
     else if(['released','sewn','packed','shipped','delivered','shipment','quality','milestones'].some(k=>Object.hasOwn(patch,k)))keys=['rows','images','additionalDesigns','startDate','released','sewn','packed','shipped','delivered','quoteStatus','shippingQuote','refunds','cancellation','quality'];
+    if(['shipped','delivered'].some(k=>Object.hasOwn(patch,k))||patch.shipment&&patch.shipment.status!==base.shipment?.status)keys=[...keys,'address','contact','phone'];
     for(const k of keys)if(!Object.hasOwn(patch,k))guards[k]=clone(base[k]??null);
     return guards;
   }
