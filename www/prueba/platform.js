@@ -92,7 +92,7 @@
       (d.labelOffset===undefined||(Number.isInteger(d.labelOffset)&&d.labelOffset>=0&&d.labelOffset<24));
   }
   function validateState(value) {
-    if(window.PROWAY_PREVIEW&&value?.appVersion!=='1.5.0-prueba')throw Error('Esta vista de prueba solo admite sus propios respaldos.');
+    if(window.PROWAY_PREVIEW&&!['1.5.0-prueba','1.5.1-prueba'].includes(value?.appVersion))throw Error('Esta vista de prueba solo admite sus propios respaldos.');
     if (!value || value.schemaVersion!==1 || !Array.isArray(value.orders) || !value.orders.length || value.orders.length>1000) throw Error('No es un respaldo compatible de Proway.');
     const seen = new Set(); let rowCount = 0;
     for (const order of value.orders) {
@@ -152,7 +152,7 @@
   function logoData(){const img=document.getElementById('pia-proway-logo');if(!img?.naturalWidth)throw Error('El logo aún no está disponible. Reintenta la descarga.');const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}
   function pdf(rev,logo,title) {
     const quote = rev.source==='cotizacion', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
-    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:'a4'});
+    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:labels?'letter':'a4'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
     if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
@@ -187,7 +187,7 @@
       paragraphs('Plazo aproximado: 20 días hábiles desde el inicio validado, después de aprobar pedido, cotización, diseño y anticipo. Tiempo de paquetería por confirmar.');
       if(q.due)paragraphs('Entrega de producción estimada: '+new Date(q.due+'T12:00:00Z').toLocaleDateString('es-MX',{timeZone:'UTC'}));
     } else if(labels) {
-      const rows=rev.data.rows, cols=4, gap=3, cellW=(width-2*margin-3*gap)/4, cellH=42,offset=rev.data.labelOffset||0;
+      const rows=rev.data.rows, cols=4, gap=3, cellW=(width-2*margin-3*gap)/4, cellH=(height-2*margin-5*gap)/6,offset=rev.data.labelOffset||0;
       rows.forEach((r,i)=>{
         const position=(i+offset)%24;
         if(i>0&&position===0)doc.addPage();
@@ -197,7 +197,7 @@
         doc.setFontSize(8);doc.setFont('helvetica','normal');
         let labelY=top+4;
         for(const [n,text] of lines.entries()){const wrapped=doc.splitTextToSize(clean(text),cellW-5).slice(0,n<3?2:1);doc.text(wrapped,x+2.5,labelY);labelY+=3.3*wrapped.length+.7;}
-        doc.setFont('helvetica','bold');doc.text(clean((r[8]||rev.client)+' · '+r[0]+' de '+(r[9]??rows.length)),x+2.5,top+38);
+        doc.setFont('helvetica','bold');doc.text(clean((r[8]||rev.client)+' · '+r[0]+' de '+(r[9]??rows.length)),x+2.5,top+cellH-4);
       });
     } else {
       doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)&&typeof v==='number'?money(v):clean(v))),styles:{font:'helvetica',fontSize:8,cellPadding:2.4},headStyles:{fillColor:[23,42,61]}});
@@ -317,6 +317,7 @@
       }
       designs.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     }
+    if(['etiquetas','etiquetas_lote'].includes(rev.source))for(const page of wb.worksheets)page.pageSetup={...page.pageSetup,paperSize:1,fitToPage:true,fitToWidth:1,fitToHeight:0};
     const buffer=await wb.xlsx.writeBuffer();return new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
   async function blankCustomerTemplate(){

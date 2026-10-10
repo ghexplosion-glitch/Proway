@@ -1,10 +1,12 @@
-# Proway Pedidos 1.6.2
+# Proway Pedidos 1.6.3
+
+La versión 1.6.3 muestra **todas las etiquetas seleccionadas** en la app, agrupadas por hoja y con las posiciones usadas indicadas. El PDF de etiquetas usa **Carta (21.59 × 27.94 cm)**, con 24 posiciones por hoja: 4 columnas y 6 filas. La altura de las etiquetas se ajusta a Carta para que la última fila quede dentro del papel. El Excel de etiquetas también queda configurado para impresión en Carta. Se conserva el detalle de colores y nombres de la cotización incorporado en 1.6.2.
 
 La versión 1.6.2 agrega **Prendas para revisar** a la cotización: producto, talla, corte, cantidad, color y nombre impreso de cada fila de Pedido. El detalle aparece en la vista previa, PDF, enlace del cliente y la hoja **Prendas para revisión** del Excel, tanto con IVA como sin desglose. Los precios mantienen su resumen por talla y corte. Los documentos y enlaces emitidos antes de la actualización conservan su versión original; para enviar el nuevo detalle hay que generar una cotización nueva desde el pedido.
 
 La versión 1.6.1 elimina el resumen contable duplicado de **Taller sublimación → Precios**, que incluía cotizaciones descartadas en el total. Esa pantalla conserva precio general y datos fiscales, con un acceso a **Dinero** para consultar y exportar los totales de la selección. Las cotizaciones descartadas permanecen en Historial y los pedidos, cobros y gastos guardados se conservan.
 
-## Vista de prueba 1.5
+## Vista de prueba 1.5.1
 
 `/prueba/` contiene una vista funcional independiente para revisar la siguiente actualización en celular y computadora. Se inicia con cinco pedidos ficticios, usa `proway-prueba-v15` en IndexedDB y no tiene acceso a la cuenta ni al espacio de colaboración real. Solo acepta sus propios respaldos. La app principal 1.6 incorpora estas funciones, mantiene la base anterior y conecta con el equipo real.
 
@@ -54,7 +56,7 @@ Los egresos se guardan y sincronizan con la cuenta de administración. Los depar
 - **Pedido → Descargar plantilla vacía para cliente** genera un Excel limpio, con celdas verdes e instrucciones. Al importarlo, también se recuperan cliente, contacto, teléfono y dirección. No incluye precios ni datos del taller.
 - Los submenús de departamentos, taller, historial, formatos de exportación y acceso al equipo quedan a la izquierda. **Diseño → Excel para nombres de diseño** descarga una hoja con el nombre en la primera columna para copiarlo fácilmente.
 - Los nombres de los archivos PDF y Excel incluyen el cliente, folio, sección y versión.
-- Cada sección ofrece **Vista previa** y **Exportar** en PDF y Excel. El PDF incluye los registros completos y las imágenes cargadas. Las etiquetas se distribuyen en cuatro columnas y seis filas, con 24 posiciones por hoja A4.
+- Cada sección ofrece **Vista previa** y **Exportar** en PDF y Excel. El PDF incluye los registros completos y las imágenes cargadas. Las etiquetas se distribuyen en cuatro columnas y seis filas, con 24 posiciones por hoja Carta.
 - El Excel de cotización permite corregir cantidad y precio en las celdas verdes. Sus importes, IVA, retención y saldo estimado se recalculan con fórmulas.
 - La exportación para Google Sheets descarga un Excel. Con conexión, impórtalo en Sheets para crear una hoja editable.
 - **Compartir cotización** prepara un enlace de consulta cuando la app está publicada en HTTPS. Incluye solo cotización y miniaturas de diseño, y conserva la versión enviada. Quien reciba el enlace puede verlo. El PDF conserva el diseño con mayor resolución.
@@ -66,7 +68,7 @@ Los egresos se guardan y sincronizan con la cuenta de administración. Los depar
 
 En **Taller → Etiquetas**, marca los pedidos que quieres imprimir juntos. **Seleccionar todos** incluye únicamente pedidos con prendas. La pantalla suma etiquetas y hojas necesarias; descarga un solo PDF o Excel. Cada etiqueta conserva cliente, folio y número de pieza dentro de su propio pedido. Los clientes se acomodan seguidos para aprovechar la hoja.
 
-**Primera etiqueta libre de la hoja** permite comenzar en una posición posterior cuando ya usaste parte de la hoja. Imprime el PDF en A4 a **100 % / tamaño real**. La vista previa identifica las posiciones utilizadas. Se admiten hasta 10,000 etiquetas por descarga.
+**Primera etiqueta libre de la hoja** permite comenzar en una posición posterior cuando ya usaste parte de la hoja. Imprime el PDF en Carta a **100 % / tamaño real**. La vista previa muestra todas las etiquetas y las posiciones utilizadas, agrupadas por hoja. Se admiten hasta 10,000 etiquetas por descarga.
 
 Los diseños adicionales se guardan en el mismo pedido y aparecen en su cotización, enlace del cliente, PDF, Excel y vistas de los departamentos. Agregar una imagen no duplica prendas ni modifica el precio. Un cambio de diseño requiere volver a aprobarlo y validar la producción.
 
