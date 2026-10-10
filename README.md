@@ -1,6 +1,8 @@
-# Proway Pedidos 1.7.0
+# Proway Pedidos 1.8.0
 
-La versión 1.7.0 agrega **Inicio con pendientes**, **Historial → Cerrados**, **Dinero → Cortes** y **Repetir pedido**. Mantiene las etiquetas Carta y el detalle de nombres, colores y diseños de la cotización.
+La versión 1.8.0 incorpora revisión explícita de extras, detalle de tarifas pendientes, datos de entrega editables, checklist de calidad, un mismo folio para cotización y pedido, y navegación táctil entre departamentos. Conserva pedidos, pagos, imágenes, avances y documentos en la misma base local y compartida.
+
+Para actualizar la app instalada, ábrela con internet y pulsa **Actualizar app** cuando aparezca. Se crea un respaldo antes del cambio de versión. La actualización mantiene la instalación y los datos existentes.
 
 ## Cierre, pendientes y repetición (1.7)
 
@@ -191,9 +193,9 @@ Aplica **backend/proway-operations.sql** a una base 1.4 antes de publicar www 1.
 **npm test** comprueba actualización de IndexedDB, cotizaciones, documentos, costos, efectivo, colores, diseños, etiquetas, cancelación/devolución, calidad, fechas, respaldos y dos dispositivos con el SDK real de Supabase contra un servidor HTTP simulado. Ninguna prueba usa cuentas ni pedidos reales.
 
 
-## Propuesta local posterior a v1.7.0
+## Extras, entrega, calidad y folios (1.8)
 
-Esta copia prepara una revisión; no se ha enviado a producción ni modifica registros compartidos.
+Estas funciones usan los registros existentes y no requieren una migración de la base compartida. Los extras ya guardados se conservan; el nuevo formulario comienza vacío y requiere confirmación antes de añadir otro.
 
 - Extras: editor cerrado, opciones y cantidad vacías, revisión de cliente/costo antes de confirmar. Cambiar de cliente no guarda extras. Se comprueba el pedido y la cuenta al confirmar.
 - Tarifas pendientes: producto, talla, corte, cantidad, origen y cliente; acceso para completar una tarifa o revisar los extras guardados. El lote muestra sus clientes seleccionados y conserva su selección independiente del cliente activo.

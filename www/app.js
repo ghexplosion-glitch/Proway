@@ -315,7 +315,7 @@
   // The installed app persists one local workspace; quoted versions remain immutable.
   let appReady=false, restoreStage=null, importedSheets=[], selectedSheet=0, sharedRevision=null, cancelStage=null, checkpointList=null;
   const profile={id:crypto.randomUUID(),name:'Proway'};
-  function serializeState(){return {schemaVersion:1,appVersion:'1.7.0',profile:{...profile},designs,expenses,activeOrderId:o().id,orders,basePrice,cutPrice,rates,shortCosts,issuer,calendar,isrControl,revisions,jobs,exportsMade,activity,nextId,savedAt:new Date().toISOString()};}
+  function serializeState(){return {schemaVersion:1,appVersion:'1.8.0',profile:{...profile},designs,expenses,activeOrderId:o().id,orders,basePrice,cutPrice,rates,shortCosts,issuer,calendar,isrControl,revisions,jobs,exportsMade,activity,nextId,savedAt:new Date().toISOString()};}
   function restoreState(s){
     ProwayPlatform.validateState(s);
     orders.splice(0,orders.length,...s.orders.map(normalizeLiveOrder));designs.splice(0,designs.length,...(s.designs||[]));expenses.splice(0,expenses.length,...(s.expenses||[]));rates.splice(0,rates.length,...s.rates);
