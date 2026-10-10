@@ -1,4 +1,6 @@
-# Proway Pedidos 1.6
+# Proway Pedidos 1.6.1
+
+La versión 1.6.1 elimina el resumen contable duplicado de **Taller sublimación → Precios**, que incluía cotizaciones descartadas en el total. Esa pantalla conserva precio general y datos fiscales, con un acceso a **Dinero** para consultar y exportar los totales de la selección. Las cotizaciones descartadas permanecen en Historial y los pedidos, cobros y gastos guardados se conservan.
 
 ## Vista de prueba 1.5
 
