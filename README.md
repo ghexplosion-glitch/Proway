@@ -1,4 +1,24 @@
-# Proway Pedidos 1.6.3
+# Proway Pedidos 1.7.0
+
+La versión 1.7.0 agrega **Inicio con pendientes**, **Historial → Cerrados**, **Dinero → Cortes** y **Repetir pedido**. Mantiene las etiquetas Carta y el detalle de nombres, colores y diseños de la cotización.
+
+## Cierre, pendientes y repetición (1.7)
+
+- Un pedido aprobado, con prendas, **entrega confirmada y saldo liquidado** se cierra automáticamente. Sale de la selección y de las listas de trabajo activo. Un pedido pagado pendiente de entrega sigue en producción; uno entregado con saldo aparece en **Por cobrar**. Los pagos, gastos, diseños, prendas y documentos se conservan en el mismo registro y siguen incluidos en Dinero.
+- **Historial → Cerrados** permite consultar el expediente y su cotización. El cierre es una vista calculada a partir de campos existentes: no mueve ni elimina registros ni requiere una migración de base. Si se modifica el precio general, las prendas cerradas que lo usaban conservan su precio anterior como precio especial.
+- **Inicio** muestra abiertos, cotizaciones por aprobar, por cobrar, envíos y alertas. Las alertas identifican únicamente la siguiente etapa responsable: diseño día hábil 5, costura 15, empaque 18 y salida 20. La entrega usa la fecha estimada de la paquetería. El calendario del taller determina días hábiles y festivos.
+- **Repetir pedido con folio nuevo** conserva cliente, prendas, nombres, colores y diseños, con identificadores nuevos. Comienza sin pagos, devoluciones, aprobación, validaciones de producción ni guía anterior. Crea primero un respaldo y evita crear dos folios con un doble toque. Revisa precios, prendas y diseño antes de aprobar la nueva cotización.
+- Las vistas nuevas usan la base local y la misma sincronización del equipo. Las alertas se consultan dentro de la app; esta versión no envía mensajes ni notificaciones fuera de ella.
+
+## Cortes de dinero (1.7)
+
+**Dinero → Cortes** permite elegir una semana de lunes a domingo, un mes o fechas personalizadas, y seleccionar los pedidos que sumarán. Incluye abiertos y cerrados; los gastos generales son opcionales y se suman una sola vez. Los anticipos capturados sin validar nunca se consideran ingresos recibidos.
+
+El corte separa cobros originales, devoluciones pagadas, egresos, resultado de caja del período, saldo anterior y saldo acumulado de la selección. Los saldos se basan en los movimientos registrados, por lo que deben conciliarse con los comprobantes. La base, el IVA y la retención se muestran según el tratamiento histórico de cada pago, sin cambiar el precio de las prendas.
+
+La utilidad prevista se muestra por pedido completo, con sus costos actuales, para los pedidos con movimientos en el período. No representa una utilidad mensual: los gastos generales aparecen en caja y no se distribuyen entre clientes. **Dinero → Resumen** mantiene la previsión global con sus gastos generales. El corte no modifica el cálculo ni los registros de ISR.
+
+El PDF y las tres hojas Excel del corte usan **Carta horizontal**. Incluyen los movimientos, el desglose por cliente y la utilidad prevista. Los gastos generales tienen una fila separada para conciliar los totales. En Excel se pueden corregir los movimientos y recalcular los totales de efectivo; las tablas de referencia conservan los importes al emitir el documento. El Excel también puede importarse en Google Sheets con conexión.
 
 La versión 1.6.3 muestra **todas las etiquetas seleccionadas** en la app, agrupadas por hoja y con las posiciones usadas indicadas. El PDF de etiquetas usa **Carta (21.59 × 27.94 cm)**, con 24 posiciones por hoja: 4 columnas y 6 filas. La altura de las etiquetas se ajusta a Carta para que la última fila quede dentro del papel. El Excel de etiquetas también queda configurado para impresión en Carta. Se conserva el detalle de colores y nombres de la cotización incorporado en 1.6.2.
 

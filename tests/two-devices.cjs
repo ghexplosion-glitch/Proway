@@ -13,8 +13,13 @@ function rpc(args){const {action,payload:p={}}=args;model.calls++;
  if(action==='sync')return {role:'admin',displayName:'Prueba en dos dispositivos',name:'Equipo sintético',orders:model.orders.filter(o=>(p.versions?.[o.id]||0)<o.version).map(jsonb),settings:(p.settingsVersion||0)<model.settingsVersion?jsonb(model.settings):null,settingsVersion:model.settingsVersion,events:[]};
  if(!['save_order','save_settings'].includes(action))throw Error('Unexpected action '+action);
  if(model.operations.has(p.operationId))return model.operations.get(p.operationId);
- const setting=action==='save_settings',record=setting?{id:'settings',version:model.settingsVersion,data:model.settings}:model.orders.find(o=>o.id===p.orderId);
- if(!record)throw Error('Unexpected new order');const conflict=Object.keys(p.patch).some(k=>!C.equal(record.data[k]??null,p.expected[k]??null)&&!C.equal(record.data[k],p.patch[k]))||Object.keys(p.guards||{}).some(k=>!C.equal(record.data[k]??null,p.guards[k]));
+ const setting=action==='save_settings';let record=setting?{id:'settings',version:model.settingsVersion,data:model.settings}:model.orders.find(o=>o.id===p.orderId);
+ if(!record){
+  if(setting||p.baseVersion!==0)throw Error('Invalid creation in the synthetic model');
+  record={id:p.orderId,version:1,data:{...structuredClone(p.patch),id:p.orderId}};model.orders.push(record);model.writes++;
+  const result={ok:true,id:record.id,version:record.version,data:jsonb(record.data)};model.operations.set(p.operationId,result);return result;
+ }
+ const conflict=Object.keys(p.patch).some(k=>!C.equal(record.data[k]??null,p.expected[k]??null)&&!C.equal(record.data[k],p.patch[k]))||Object.keys(p.guards||{}).some(k=>!C.equal(record.data[k]??null,p.guards[k]));
  if(conflict)return {conflict:true,id:record.id,version:record.version,data:jsonb(record.data)};
  record.data={...record.data,...structuredClone(p.patch)};record.version++;model.writes++;
  if(setting){model.settings=record.data;model.settingsVersion=record.version;}
@@ -54,6 +59,17 @@ function rpc(args){const {action,payload:p={}}=args;model.calls++;
   const backups=await a.page.evaluate(()=>ProwayPlatform.listCheckpoints()),review=backups.find(x=>x.reason.includes('conflicto'));ok('Resolving a conflict first makes a recoverable checkpoint',!!review);ok('Checkpoint preserves the local version before selecting the team copy',await a.page.evaluate(async id=>(await ProwayPlatform.readCheckpoint(id)).state.orders[0].contact==='Cambio del celular en conflicto',review.id));
   ok('Reviewed team copy reaches both devices',(await saved(a.page)).orders[0].contact==='Cambio de computadora validado'&&(await saved(b.page)).orders[0].contact==='Cambio de computadora validado');
   await a.page.locator('[data-screen="taller"]').click();await a.page.locator('[data-work="diseño"]').click();await a.page.evaluate(()=>{window.__repaints=0;new MutationObserver(()=>__repaints++).observe(document.getElementById('pia-main'),{childList:true});});const writes=model.writes;for(let i=0;i<4;i++)await a.page.evaluate(()=>ProwayCollaboration.sync(true));ok('Repeated genuine SDK pulls do not repaint a department or write unchanged data',await a.page.evaluate(()=>__repaints===0)&&model.writes===writes);
+  const completed=model.orders.find(o=>o.id==='C3'),amount=completed.data.rows.reduce((n,r)=>n+r.qty*800,0);
+  Object.assign(completed.data,{payerType:'PF',dataOk:true,confirmed:true,designOk:true,paymentOk:true,advance:amount,advanceDate:'2026-10-08',advanceRecord:{amount,date:'2026-10-08',retention:0,documented:false,simulated:false,vatMode:'none'},startDate:'2026-09-11',released:true,sewn:true,packed:true,shipped:true,delivered:true,shipment:{carrier:'Paquetería sintética',guide:'PRUEBA-C3',date:'2026-10-08',eta:'2026-10-09',status:'Entregado',events:[{status:'Entregado',date:'2026-10-09'}]},quality:{counts:Object.fromEntries(completed.data.rows.map(r=>[String(r.id),r.qty])),names:true,design:true,notes:'Prueba',checkedAt:'2026-10-08'}});completed.version++;
+  const finished=structuredClone(completed.data);for(const device of [a,b]){await device.page.evaluate(()=>ProwayCollaboration.sync(true));await device.page.locator('[data-screen="inicio"]').click();}
+  ok('A paid delivered job closes on both devices after a pull',await a.page.locator('#pia-order option[value="2"]').count()===0&&await b.page.locator('#pia-order option[value="2"]').count()===0&&C.equal((await saved(a.page)).orders.find(o=>o.id==='C3'),finished));
+  ok('Derived closure creates no server writes',model.writes===writes);
+  await a.context.setOffline(true);await a.page.locator('[data-screen="historial"]').click();await a.page.locator('[data-history="cerrados"]').click();await a.page.locator('[data-open-job="C3"]').click();await a.page.locator('[data-action="repeat-order"]').click();await a.page.locator('#pia-add-form').waitFor({state:'attached'});const repeated=(await saved(a.page)).orders.at(-1);
+  ok('Repeating offline creates a new unpaid order with the same names and colors',repeated.id!=='C3'&&repeated.rows[0].printed===finished.rows[0].printed&&repeated.rows[0].color===finished.rows[0].color&&repeated.payments.length===0&&repeated.advance===0&&!repeated.confirmed);
+  ok('The repeated order stays durable and pending on the phone until reconnect',await a.page.evaluate(async id=>!!(await ProwayPlatform.readAux()).pending[id],repeated.id)&&!model.orders.some(o=>o.id===repeated.id));
+  await a.context.setOffline(false);await a.page.evaluate(()=>ProwayCollaboration.sync(true));await b.page.evaluate(()=>ProwayCollaboration.sync(true));
+  ok('Reconnecting sends the repeated order to the computer exactly once',model.orders.filter(o=>o.id===repeated.id).length===1&&(await saved(a.page)).orders.length===6&&(await saved(b.page)).orders.some(o=>o.id===repeated.id&&o.rows[0].printed===finished.rows[0].printed));
+  ok('Repeat and synchronization preserve the original closed payments',C.equal(model.orders.find(o=>o.id==='C3').data,finished));
   ok('Cellular and desktop layouts fit',await a.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)&&await b.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   ok('Test contacts only its isolated HTTP model',unexpected.length===0);ok('Two-device workflows raise no JavaScript errors',errors.length===0);fs.writeFileSync(path.join(out,'two-devices-checks.json'),JSON.stringify({passed:checks.length,checks,errors,simulated:true},null,2));console.log(JSON.stringify({passed:checks.length,errors}));
  }finally{await browser?.close();server.kill();}

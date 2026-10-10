@@ -173,12 +173,12 @@
   function logoData(){const img=document.getElementById('pia-proway-logo');if(!img?.naturalWidth)throw Error('El logo aún no está disponible. Reintenta la descarga.');const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}
   function pdf(rev,logo,title) {
     const quote = rev.source==='cotizacion', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
-    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:labels?'letter':'a4'});
+    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:labels||rev.source==='corte'?'letter':'a4'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
     if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(clean(title),margin,40);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((rev.source==='finanzas'?'Pedidos seleccionados':rev.client)+' · '+rev.name+' · v'+rev.version),margin,47);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((['finanzas','corte'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name+' · v'+rev.version),margin,47);
     doc.text(new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}),width-margin,18,{align:'right'});}
     let y = 54;
     const line = (label,value,bold=false) => {
@@ -258,7 +258,7 @@
   async function excel(rev,title) {
     const wb=new ExcelJS.Workbook();wb.creator='Proway';wb.created=new Date();
     const sheet=wb.addWorksheet('Documento'), d=rev.data;
-    sheet.addRow(['','',title]);sheet.addRow(['','',(rev.source==='finanzas'?'Pedidos seleccionados':rev.client)+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
+    sheet.addRow(['','',title]);sheet.addRow(['','',(['finanzas','corte'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
     sheet.mergeCells('A1:B3');
     const mark=wb.addImage({base64:logoData(),extension:'png'});sheet.addImage(mark,{tl:{col:0,row:0},ext:{width:170,height:54}});
     if(rev.source==='cotizacion'){sheet.addRow(['Cotización / proforma - sin timbrar. No es CFDI.']);sheet.addRow([{text:'proway.com.mx',hyperlink:'https://proway.com.mx'},{text:'WhatsApp: 33 1007 9695',hyperlink:'https://wa.me/523310079695'}]);}
@@ -285,13 +285,14 @@
       sheet.getCell(mode).dataValidation={type:'list',allowBlank:false,formulae:['"Sin IVA adicional,Precios más IVA"']};sheet.getCell(mode).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};wb.calcProperties.fullCalcOnLoad=true;
       sheet.addRow(['Editar celdas verdes: cantidad, tarifa y corte. Los totales se recalculan en Excel o Google Sheets.']);
     }
-    if(rev.source==='finanzas'){
+    if(['finanzas','corte'].includes(rev.source)){
       const at=label=>'B'+summaries.get(label),set=(label,formula)=>{const c=sheet.getCell(at(label));c.value={formula,result:c.value};};
       set('Cobros originales',d.rows.length?'SUM(E'+firstRow+':E'+lastRow+')':'0');
       set('Devoluciones pagadas',d.rows.length?'SUMIF(A'+firstRow+':A'+lastRow+',"Devolución",F'+firstRow+':F'+lastRow+')':'0');
       set('Cobrado y validado',at('Cobros originales')+'-'+at('Devoluciones pagadas'));
       set('Egresos registrados',d.rows.length?'SUMIF(A'+firstRow+':A'+lastRow+',"Egreso",F'+firstRow+':F'+lastRow+')':'0');
       set('Disponible de cobros',at('Cobrado y validado')+'-'+at('Egresos registrados'));wb.calcProperties.fullCalcOnLoad=true;
+      if(rev.source==='corte')set('Saldo acumulado al cierre',at('Saldo inicial de la selección')+'+'+at('Disponible de cobros'));
       sheet.addRow(['Control a la fecha de exportación. Al editar ingresos o egresos se recalculan los totales de efectivo.']);
     }
     if(rev.source==='cotizacion'&&rev.quote?.tax.mode!=='included'&&d.rows.length&&rev.quote?.showVat===false){
@@ -348,7 +349,7 @@
       }
       designs.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     }
-    if(['etiquetas','etiquetas_lote'].includes(rev.source))for(const page of wb.worksheets)page.pageSetup={...page.pageSetup,paperSize:1,fitToPage:true,fitToWidth:1,fitToHeight:0};
+    if(['etiquetas','etiquetas_lote','corte'].includes(rev.source))for(const page of wb.worksheets)page.pageSetup={...page.pageSetup,paperSize:1,orientation:rev.source==='corte'?'landscape':page.pageSetup.orientation,fitToPage:true,fitToWidth:1,fitToHeight:0};
     const buffer=await wb.xlsx.writeBuffer();return new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
   async function blankCustomerTemplate(){
