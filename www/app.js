@@ -354,12 +354,18 @@
     if(a==='open-product-prices'){table='precios';go('tablas');return true;}
     if(a==='review-product-prices'){if(!isAdmin()||r.quoteStatus!=='active'||isClosed(r))return true;priceReview={...ProwayPricing.review(r,productPrices,basePrice),originalRows:structuredClone(r.rows),prices:{...productPrices},profileId:profile.id};render();return true;}
     if(a==='confirm-product-prices'){
+      if(busyTasks)return true;
       if(!isAdmin()||r.quoteStatus!=='active'||isClosed(r)||!samePricingReview(r)){priceReview=null;render();announce('El pedido o sus precios cambiaron. Vuelve a revisar antes de aplicar.');return true;}
       if(priceReview.missing.length){announce('Define los precios que faltan antes de aplicarlos.');return true;}
-      await ProwayPlatform.checkpoint('Antes de aplicar precios automáticos al pedido');
-      if(!samePricingReview(r)||r.quoteStatus!=='active'||isClosed(r)){priceReview=null;render();announce('Cambió el pedido mientras se guardaba el respaldo. Revisa de nuevo.');return true;}
-      const review=priceReview,moneyChanged=review.rows.some((row,i)=>unitPrice(row)!==unitPrice(r.rows[i]))||ProwayPricing.hasPending(r);
-      r.rows=structuredClone(review.rows);priceReview=null;if(moneyChanged)invalidate('price',r);record('Precios automáticos aplicados al pedido; precios especiales conservados','cotizacion');render();announce('Precios aplicados. Revisa el total y aprueba la cotización.');return true;
+      busyTasks++;b.disabled=true;
+      try{
+        await ProwayPlatform.checkpoint('Antes de aplicar precios automáticos al pedido');
+        if(!isAdmin()||!samePricingReview(r)||r.quoteStatus!=='active'||isClosed(r)){priceReview=null;render();announce('Cambió el pedido mientras se guardaba el respaldo. Revisa de nuevo.');return true;}
+        const review=priceReview,moneyChanged=review.rows.some((row,i)=>unitPrice(row)!==unitPrice(r.rows[i]))||ProwayPricing.hasPending(r);
+        r.rows=structuredClone(review.rows);priceReview=null;if(moneyChanged)invalidate('price',r);record('Precios automáticos aplicados al pedido; precios especiales conservados','cotizacion');render();announce('Precios aplicados. Revisa el total y aprueba la cotización.');
+      }catch(err){announce('No se pudieron aplicar los precios: '+err.message);}
+      finally{busyTasks--;if(b.isConnected)b.disabled=false;}
+      return true;
     }
     if(a==='design-excel'){try{await appBridge.exportDocument('diseño','excel');}catch(err){announce(err.message);}return true;}
     if(a==='open-closed-history'){historyTab='cerrados';go('historial');return true;}
