@@ -1,7 +1,7 @@
 /* Pure synchronization rules. Shared by the app and meaningful offline tests. */
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.ProwaySyncCore=factory();})(globalThis,function(){
   'use strict';
-  const settingKeys=['basePrice','cutPrice','rates','shortCosts','issuer','calendar','isrControl','designs','expenses'];
+  const settingKeys=['basePrice','productPrices','cutPrice','rates','shortCosts','issuer','calendar','isrControl','designs','expenses'];
   // JSONB may return object keys in a different order. Order is meaningful only in arrays.
   function equal(a,b){
     if(a===b||(a==null&&b==null))return true;
@@ -17,7 +17,7 @@
   const clone=x=>structuredClone(x);
   const orderDefaults={quoteStatus:'active',shippingQuote:{amount:0,description:''},plannedCosts:{fabric:0,sewing:0,shipping:0,other:0},cancellation:{date:'',reason:''},refunds:[],quality:{counts:{},names:false,design:false,notes:'',checkedAt:''},milestones:{design:'',sewing:'',packing:'',shipping:''}};
   function normalizeOrder(o){return {...clone(orderDefaults),...o,additionalDesigns:o.additionalDesigns||[]};}
-  function settings(state){return Object.fromEntries(settingKeys.map(k=>[k,clone(state[k]??(['designs','expenses'].includes(k)?[]:null))]));}
+  function settings(state){return Object.fromEntries(settingKeys.filter(k=>k!=='productPrices'||state[k]!==undefined).map(k=>[k,clone(state[k]??(['designs','expenses'].includes(k)?[]:null))]));}
   function difference(data,base){const patch={},expected={};for(const k of Object.keys(data)){if(k==='additionalDesigns'&&equal(data[k]??[],base?.[k]??[]))continue;if(Object.hasOwn(orderDefaults,k)&&equal(data[k]??orderDefaults[k],base?.[k]??orderDefaults[k]))continue;if(!equal(data[k],base?.[k])){patch[k]=clone(data[k]);expected[k]=clone(base?.[k]??null);}}return {patch,expected};}
   function guardsFor(patch,base){
     const guards={};if(!base)return guards;
@@ -52,8 +52,8 @@
     state.orders=[...ids].sort().map(id=>clone(meta.pending[id]?.desired||meta.bases[id]?.data||existing.get(id))).filter(Boolean);
     if(!state.orders.length)state.orders=baseState.orders;
     state.orders=state.orders.map(normalizeOrder);
-    if(meta.role==='admin')Object.assign(state,clone(meta.pending.settings?.desired||meta.settingsBase?.data||settings(state)));
-    else{state.basePrice=0;state.cutPrice=0;state.rates=[];state.shortCosts={};state.designs=[];state.expenses=[];state.issuer={name:'',rfc:'',cp:'',regime:'626 · Régimen Simplificado de Confianza',legalType:'PF'};state.isrControl={month:new Date().toISOString().slice(0,7),external:{}};if(meta.settingsBase?.data?.calendar)state.calendar=clone(meta.settingsBase.data.calendar);state.jobs=[];state.revisions=[];state.exportsMade=[];}
+    if(meta.role==='admin'){const selectedSettings=meta.pending.settings?.desired||meta.settingsBase?.data||settings(state);Object.assign(state,clone(selectedSettings));if(!Object.hasOwn(selectedSettings,'productPrices'))delete state.productPrices;}
+    else{state.basePrice=0;state.productPrices={Butarga:null,Playera:null,Short:null};state.cutPrice=0;state.rates=[];state.shortCosts={};state.designs=[];state.expenses=[];state.issuer={name:'',rfc:'',cp:'',regime:'626 · Régimen Simplificado de Confianza',legalType:'PF'};state.isrControl={month:new Date().toISOString().slice(0,7),external:{}};if(meta.settingsBase?.data?.calendar)state.calendar=clone(meta.settingsBase.data.calendar);state.jobs=[];state.revisions=[];state.exportsMade=[];}
     state.profile={id:meta.userId,name:meta.displayName||'Proway'};
     if(meta.events)state.activity=meta.events.map(e=>({client:e.client||state.orders[0].id,action:(e.actor?e.actor+' · ':'')+e.action,time:e.time,section:'equipo'}));
     return state;

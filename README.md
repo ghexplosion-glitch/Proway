@@ -1,4 +1,14 @@
-# Proway Pedidos 1.8.0
+# Proway Pedidos 1.9.0
+
+La versión 1.9.0 calcula el cobro de cada prenda a partir de su producto. Conserva pedidos, cobros, diseños y cotizaciones anteriores.
+
+1. Abre **Taller sublimación → Precios** y define el precio base de **Butarga**, **Playera** y **Short**. Playera y Short empiezan pendientes; no se les asigna el precio general de $800. Cero significa un precio explícito sin cargo.
+2. Agrega prendas o importa el pedido del cliente. Cada fila nueva sin precio toma el de su producto y conserva ese importe. Un conjunto suma una playera y un short. Un precio capturado en Excel se conserva como especial, incluido cero.
+3. Revisa **Cobro**. Puedes ajustar el precio especial de cada grupo por producto, talla y corte. Vaciar ese campo vuelve a tomar el precio del producto. **Agregar IVA** suma 16% al importe base, sin extraer impuesto de los precios capturados.
+4. Cambiar la tabla de productos solo afecta a nuevas prendas. Para recalcular un pedido existente, usa **Revisar precios automáticos de este pedido → Aplicar precios a este pedido**. Se muestran los importes antes y después, se crea un respaldo y se conservan precios especiales y cobros. Si cambia el precio, revisa nuevamente la aprobación y el avance antes de producir.
+5. Un precio pendiente impide aprobar o emitir la cotización; completa el catálogo o escribe el precio especial. Los documentos y pagos anteriores permanecen con su versión original. La tabla de precios sincroniza entre administradores al reconectar; las vistas del taller no reciben precios privados.
+
+La actualización del servicio compartido usa `backend/proway-product-prices.sql`: amplía dos validadores de campos opcionales sin transformar los pedidos ni modificar los permisos. Las pruebas incluyen precios distintos por producto, 28 conjuntos / 56 prendas, precios especiales, importación con cero, IVA adicional, PDF/Excel, recuperación de datos 1.8 y trabajo sin conexión en celular y computadora.
 
 La versión 1.8.0 incorpora revisión explícita de extras, detalle de tarifas pendientes, datos de entrega editables, checklist de calidad, un mismo folio para cotización y pedido, y navegación táctil entre departamentos. Conserva pedidos, pagos, imágenes, avances y documentos en la misma base local y compartida.
 
@@ -57,7 +67,7 @@ La app está publicada en [proway-pedidos.netlify.app](https://proway-pedidos.ne
 ## Probar un pedido nuevo
 
 1. **Inicio → Crear nuevo pedido.** Completa los campos verdes del cliente, prendas, tallas y corte Hombre o Mujer. El botón del formulario del cliente muestra únicamente su pedido.
-2. **Cobro.** Elige si el cliente verá el desglose de IVA o solo los precios finales, el anticipo y el saldo. La retención de ISR de personas morales se muestra cuando corresponde. Confirma si pagará una persona física o moral. Fija el precio general o el especial por talla y corte. El precio general inicial es $800 base: no se descuenta IVA. **Agregar IVA** suma 16% y muestra el desglose; sin marcarlo se envía el precio, anticipo y saldo. Usa **Aprobar cotización** después de revisar el pedido.
+2. **Cobro.** Elige si el cliente verá el desglose de IVA o solo los precios finales, el anticipo y el saldo. La retención de ISR de personas morales se muestra cuando corresponde. Confirma si pagará una persona física o moral. Configura el precio automático de cada producto en Taller sublimación → Precios; ajusta el especial por talla y corte cuando lo necesites. El precio general inicial de $800 se conserva para listados anteriores sin precio individual: no se descuenta IVA. **Agregar IVA** suma 16% y muestra el desglose; sin marcarlo se envía el precio, anticipo y saldo. Usa **Aprobar cotización** después de revisar el pedido.
 3. Captura el depósito neto y, cuando exista, la retención real por separado. Valida el pago recibido. Los cobros ya validados permanecen en el control fiscal aunque después corrijas la cotización.
 4. **Diseño.** Elige las imágenes originales Proway rojo o azul con vista delantera y trasera. Desde Pedido, Cobro o Diseño puedes agregar hasta ocho diseños adicionales a la misma cotización, nombrarlos y cargar sus imágenes desde la galería. Escribe el nombre o código en la columna Diseño de las prendas correspondientes. Aprueba el diseño y valida pedido, cotización y anticipo. Inicia entonces el plazo de 20 días hábiles.
 5. Valida la impresión para pasar a **Costura**, valida la costura para pasar a **Empaque**, confirma conteo físico, nombres/tallas y diseño/colores, valida Calidad y libera a **Envío**.

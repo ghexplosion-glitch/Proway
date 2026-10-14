@@ -70,6 +70,16 @@ function rpc(args){const {action,payload:p={}}=args;model.calls++;
   await a.context.setOffline(false);await a.page.evaluate(()=>ProwayCollaboration.sync(true));await b.page.evaluate(()=>ProwayCollaboration.sync(true));
   ok('Reconnecting sends the repeated order to the computer exactly once',model.orders.filter(o=>o.id===repeated.id).length===1&&(await saved(a.page)).orders.length===6&&(await saved(b.page)).orders.some(o=>o.id===repeated.id&&o.rows[0].printed===finished.rows[0].printed));
   ok('Repeat and synchronization preserve the original closed payments',C.equal(model.orders.find(o=>o.id==='C3').data,finished));
+  const unchangedOrders=structuredClone(model.orders);await a.context.setOffline(true);await a.page.locator('[data-screen="tablas"]').click();await a.page.locator('[data-table="precios"]').click();
+  for(const [product,price] of [['playera',315],['short',185]]){await a.page.locator('#pia-product-'+product).fill(String(price));await a.page.locator('#pia-product-'+product).dispatchEvent('change');}
+  await a.page.evaluate(()=>ProwayPlatform.flush());
+  ok('Offline product catalog edits queue settings without altering orders',await a.page.evaluate(async()=>{const m=await ProwayPlatform.readAux();return m.pending.settings.desired.productPrices.Playera===315;})&&C.equal(model.orders,unchangedOrders));
+  await a.context.setOffline(false);await a.page.evaluate(()=>ProwayCollaboration.sync(true));await b.page.evaluate(()=>ProwayCollaboration.sync(true));
+  ok('One product catalog synchronizes from phone to computer',model.settings.productPrices.Playera===315&&(await saved(b.page)).productPrices.Short===185&&C.equal(model.orders,unchangedOrders));
+  await a.page.locator('[data-screen="inicio"]').click();await a.page.locator('[data-action="new-order"]').click();
+  for(const product of ['Playera','Short']){await a.page.locator('#pia-add-product').selectOption(product);await a.page.locator('#pia-add-form button[type=submit]').click();}
+  await a.page.evaluate(()=>ProwayPlatform.flush());await a.page.evaluate(()=>ProwayCollaboration.sync(true));await b.page.evaluate(()=>ProwayCollaboration.sync(true));const priced=(await saved(a.page)).orders.at(-1),paired=(await saved(b.page)).orders.find(o=>o.id===priced.id);
+  ok('Both devices receive captured prices for each product in the same new order',priced.rows[0].special===315&&priced.rows[1].special===185&&priced.rows.every(r=>r.priceMode==='auto')&&C.equal(priced,paired));
   ok('Cellular and desktop layouts fit',await a.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)&&await b.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   ok('Test contacts only its isolated HTTP model',unexpected.length===0);ok('Two-device workflows raise no JavaScript errors',errors.length===0);fs.writeFileSync(path.join(out,'two-devices-checks.json'),JSON.stringify({passed:checks.length,checks,errors,simulated:true},null,2));console.log(JSON.stringify({passed:checks.length,errors}));
  }finally{await browser?.close();server.kill();}

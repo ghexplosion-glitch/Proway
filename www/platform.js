@@ -133,10 +133,13 @@
       if(order.showVat!==undefined&&typeof order.showVat!=='boolean')throw Error('Desglose de IVA inválido.');
       if(order.supplier&&(!['none','added','included'].includes(order.supplier.mode)||!Array.isArray(order.supplier.extras)||order.supplier.extras.length>500||order.supplier.extras.some(x=>!identifier(x.id)||!['Error','Impresión extra'].includes(x.type)||!['Butarga','Playera','Short'].includes(x.product)||!['Hombre','Mujer'].includes(x.cut)||!text(x.size,30)||!Number.isInteger(x.qty)||x.qty<1||x.qty>10000||typeof x.cutting!=='boolean'||!text(x.note,500))))throw Error('Costos extra inválidos.');
       for (const r of order.rows) {
+        if(r.priceMode!==undefined&&(!['auto','manual','pending'].includes(r.priceMode)||!number(r.special)||(r.priceMode==='pending'&&r.special!==0)))throw Error('Precio automático inválido.');
+        if(order.confirmed&&r.priceMode==='pending')throw Error('La cotización aprobada tiene precios pendientes.');
         if (!Number.isInteger(r.id)||r.id<1||!['Butarga','Playera','Short'].includes(r.product) || !['Hombre','Mujer'].includes(r.cut) || !text(r.size,30) || !Number.isInteger(r.qty) || r.qty<1 || r.qty>10000 || (r.special!==''&&!number(r.special))) throw Error('Prenda, talla, corte o precio inválido.');
         for (const key of ['printed','color','design']) if (!text(r[key]||'',500)) throw Error('Datos de prenda inválidos.');
       }
     }
+    if(value.productPrices!==undefined&&(!value.productPrices||typeof value.productPrices!=='object'||Array.isArray(value.productPrices)||Object.keys(value.productPrices).length!==3||!['Butarga','Playera','Short'].every(p=>Object.hasOwn(value.productPrices,p)&&(value.productPrices[p]===null||number(value.productPrices[p])))))throw Error('Precios por producto inválidos.');
     if (!number(value.basePrice) || !number(value.cutPrice) || !Array.isArray(value.rates) || value.rates.length>500) throw Error('Tarifas inválidas.');
     for (const r of value.rates) if (!['Butarga','Playera'].includes(r.product)||!['Hombre','Mujer','*'].includes(r.cut)||!text(r.size,30)||!number(r.cost)) throw Error('Tarifa de sublimación inválida.');
     if (!value.issuer || value.issuer.legalType!=='PF' || !String(value.issuer.regime).startsWith('626')) throw Error('Este respaldo debe corresponder a RESICO persona física.');

@@ -349,3 +349,5 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-department-deadlines>.pia-panel{margin:12px 0 0;padding:0;border:0;background:transparent;box-shadow:none}
 #pia-offline-app .pia-quality-row span{font-size:15px;line-height:1.45}
 #pia-offline-app .pia-quality-row small{font-size:13px}
+#pia-offline-app .pia-pricing-tools{display:grid;gap:10px;margin:14px 0}
+#pia-offline-app .pia-pricing-tools button{width:100%;white-space:normal}
