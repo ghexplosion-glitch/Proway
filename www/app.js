@@ -369,8 +369,9 @@
       busyTasks++;b.disabled=true;
       try{
         await ProwayPlatform.checkpoint('Antes de editar precios de varios productos');
+        if(!isAdmin()||profile.id!==account||r!==o()){announce('El pedido o los precios cambiaron. Revisa la selección y vuelve a aplicar.');return true;}
         const current=bulkPriceDraft(r);
-        if(!isAdmin()||profile.id!==account||r!==o()||r.quoteStatus!=='active'||isClosed(r)||!ProwaySyncCore.equal(originalRows,r.rows)||!ProwaySyncCore.equal(settings,{selected:current.selected,prices:current.prices,keepSpecial:current.keepSpecial})){announce('El pedido o los precios cambiaron. Revisa la selección y vuelve a aplicar.');return true;}
+        if(r.quoteStatus!=='active'||isClosed(r)||!ProwaySyncCore.equal(originalRows,r.rows)||!ProwaySyncCore.equal(settings,{selected:current.selected,prices:current.prices,keepSpecial:current.keepSpecial})){announce('El pedido o los precios cambiaron. Revisa la selección y vuelve a aplicar.');return true;}
         r.rows=structuredClone(preview.rows);bulkPriceDrafts.delete(bulkPriceKey(r));priceReview=null;if(preview.moneyChanged)invalidate('price',r);record('Precio base actualizado en '+preview.quantity+' prendas · '+settings.selected.join(' + '),'cotizacion');render();announce('Precios aplicados a '+preview.quantity+' prendas. Revisa el total de la cotización.');
       }catch(err){announce('No se pudieron aplicar los precios: '+err.message);}
       finally{busyTasks--;if(b.isConnected)b.disabled=false;}
