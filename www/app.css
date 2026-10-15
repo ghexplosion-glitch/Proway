@@ -351,3 +351,11 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-quality-row small{font-size:13px}
 #pia-offline-app .pia-pricing-tools{display:grid;gap:10px;margin:14px 0}
 #pia-offline-app .pia-pricing-tools button{width:100%;white-space:normal}
+
+#pia-offline-app .pia-bulk-prices{margin:16px 0;padding:14px 0;border-top:1px solid var(--pia-line,#dce5df);border-bottom:1px solid var(--pia-line,#dce5df)}
+#pia-offline-app .pia-bulk-prices>summary{font-weight:700;cursor:pointer}
+#pia-offline-app .pia-bulk-prices>p{margin:12px 0}
+#pia-offline-app .pia-bulk-price-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(115px,1fr);gap:10px;align-items:center;margin:12px 0}
+#pia-offline-app .pia-bulk-price-row .pia-field{min-width:0;font-size:12px}
+#pia-offline-app .pia-bulk-price-row .pia-check{margin:0}
+#pia-offline-app .pia-bulk-prices button{white-space:normal}

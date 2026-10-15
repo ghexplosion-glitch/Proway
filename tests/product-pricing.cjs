@@ -33,4 +33,17 @@ const legacySettings={...C.settings(state),basePrice:500};delete legacySettings.
 ok('Legacy shared catalog derives from its own base instead of the fresh device default',!Object.hasOwn(C.stateFrom(state,{...meta,settingsBase:{data:legacySettings,version:1}}),'productPrices'));
 const view=C.stateFrom(state,{...meta,role:'costura',settingsBase:{data:{calendar:state.calendar},version:1}});
 ok('Department state does not disclose the product catalog',P.products.every(p=>view.productPrices[p]===null));
+const bulkOrder={id:'BULK',rows:[P.capture(row('Playera',2),prices),P.capture(row('Playera',1,175),prices),P.capture(row('Short',2),prices),P.capture(row('Short',1,0),prices),P.capture(row('Butarga'),prices)]},bulkBefore=JSON.stringify(bulkOrder);
+let bulk=P.bulkReview(bulkOrder,['Playera','Short'],{Playera:350,Short:250},false,800);
+ok('Bulk edits sum actual quantities across sizes and products',bulk.quantity===6&&bulk.before===1975&&bulk.after===2600&&bulk.moneyChanged);
+ok('Unselected products and original rows are preserved',bulk.rows.at(-1).special===800&&JSON.stringify(bulkOrder)===bulkBefore);
+ok('An explicit batch edit captures the chosen quote prices',bulk.rows.slice(0,4).every(r=>r.priceMode==='manual'&&r.special===(r.product==='Playera'?350:250)));
+bulk=P.bulkReview(bulkOrder,['Playera','Short'],{Playera:350,Short:250},true,800);
+ok('Keeping special prices preserves manual zero and exceptions',bulk.quantity===4&&bulk.skipped===2&&bulk.after===2175&&bulk.rows[1].special===175&&bulk.rows[3].special===0);
+bulk=P.bulkReview(bulkOrder,['Short'],{Short:0},false,800);
+ok('Bulk zero is an explicit sale price and does not change quantities',bulk.rows.filter(r=>r.product==='Short').every(r=>r.special===0&&r.priceMode==='manual')&&bulk.rows.every((r,i)=>r.qty===bulkOrder.rows[i].qty));
+ok('Applying identical prices preserves approval milestones',!P.bulkReview({rows:[P.capture(row('Playera',2),prices)]},['Playera'],{Playera:300},false,800).moneyChanged);
+const incomplete={rows:[pending,P.capture(row('Playera'),prices)]};
+ok('Pricing one product keeps other missing prices visible',P.bulkReview(incomplete,['Playera'],{Playera:300},false,800).after===null);
+for(const value of ['',null,-1,Infinity,1000000001]){let rejected=false;try{P.bulkReview(bulkOrder,['Short'],{Short:value},false,800);}catch{rejected=true;}ok('Bulk invalid price is rejected '+String(value),rejected);}
 const out=path.resolve(__dirname,'../test-results');fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'product-pricing-checks.json'),JSON.stringify({passed:checks.length,checks},null,2));console.log(JSON.stringify({passed:checks.length,area:'product-pricing'}));

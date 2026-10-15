@@ -14,5 +14,17 @@
   function missing(order){const groups=new Map();for(const row of order.rows||[])if(row.priceMode==='pending'){const k=[row.product,row.size,row.cut].join('|');if(!groups.has(k))groups.set(k,{product:row.product,size:row.size,cut:row.cut,qty:0});groups.get(k).qty+=row.qty;}return [...groups.values()];}
   function reprice(order,prices){return (order.rows||[]).map(row=>capture(row,prices));}
   function review(order,prices,legacyBase){const next=reprice(order,prices),unit=r=>r.special===''?legacyBase:r.special;return {id:order.id,rows:next,changed:next.some((r,i)=>r.special!==order.rows[i].special||r.priceMode!==order.rows[i].priceMode),before:round(order.rows.reduce((n,r)=>n+r.qty*unit(r),0)),after:round(next.reduce((n,r)=>n+r.qty*unit(r),0)),missing:missing({rows:next})};}
-  return {products,defaults,validPrices,validRow,capture,hasPending,missing,reprice,review};
+  function bulkReview(order,selected,prices,keepSpecial,legacyBase){
+    if(!selected.length||selected.some(p=>!products.includes(p)||typeof prices[p]!=='number'||!Number.isFinite(prices[p])||prices[p]<0||prices[p]>1000000000))throw Error('Selecciona productos y escribe un precio válido para cada uno.');
+    const chosen=new Set(selected),unit=r=>r.special===''?legacyBase:Number(r.special);let quantity=0,skipped=0,moneyChanged=false;
+    const rows=order.rows.map(r=>{
+      if(!chosen.has(r.product))return {...r};
+      const special=r.priceMode==='manual'||r.priceMode===undefined&&r.special!==''&&r.special!==undefined;
+      if(keepSpecial&&special){skipped+=r.qty;return {...r};}
+      quantity+=r.qty;const price=round(prices[r.product]);if(r.priceMode==='pending'||unit(r)!==price)moneyChanged=true;
+      return {...r,special:price,priceMode:'manual'};
+    });
+    return {rows,quantity,skipped,moneyChanged,before:hasPending(order)?null:round(order.rows.reduce((n,r)=>n+r.qty*unit(r),0)),after:hasPending({rows})?null:round(rows.reduce((n,r)=>n+r.qty*unit(r),0))};
+  }
+  return {products,defaults,validPrices,validRow,capture,hasPending,missing,reprice,review,bulkReview};
 });

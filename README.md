@@ -1,4 +1,6 @@
-# Proway Pedidos 1.9.0
+# Proway Pedidos 1.9.1
+
+La versión 1.9.1 permite cambiar precios por producto desde **Cotización y cobro → Editar precio base de varios productos**. Marca Playera, Short o Butarga, captura el precio base por prenda y usa **Aplicar precios seleccionados**. Se aplica a todas las tallas y cortes de los productos elegidos; puedes activar **Conservar precios especiales** para mantener las excepciones. Cambiar un importe requiere revisar la aprobación, conserva cobros y documentos emitidos y crea un respaldo antes de aplicar. El catálogo general conserva sus precios.
 
 La versión 1.9.0 calcula el cobro de cada prenda a partir de su producto. Conserva pedidos, cobros, diseños y cotizaciones anteriores.
 
