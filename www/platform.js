@@ -112,6 +112,16 @@
       (!d.extraTables||(Array.isArray(d.extraTables)&&d.extraTables.length<=5&&d.extraTables.every(t=>text(t.title,100)&&!t.extraTables&&validDocument(t)))) &&
       (d.labelOffset===undefined||(Number.isInteger(d.labelOffset)&&d.labelOffset>=0&&d.labelOffset<24));
   }
+  function validDesignOrders(list){
+    if(list===undefined)return true;
+    if(!Array.isArray(list)||list.length>1000)return false;
+    const ids=new Set();let rows=0;
+    return list.every(o=>{
+      if(!o||!identifier(o.id)||ids.has(o.id)||!text(o.name,200)||!text(o.status,500)||!o.images||!image(o.images.front)||!image(o.images.back)||!validDesigns(o.additionalDesigns)||!validDocument(o.data)||o.data.heads.length!==8||o.data.money.length||o.data.extraTables)return false;
+      ids.add(o.id);rows+=o.data.rows.length;return rows<=10000&&o.data.rows.every(r=>r.length===8&&Number.isInteger(r[3])&&r[3]>0);
+    });
+  }
+  function artworkSets(artwork){return [{name:'Diseño principal',images:artwork.images},...(artwork.additionalDesigns||[])].filter(d=>d.images&&Object.values(d.images).some(Boolean));}
   function validateState(value) {
     if (!value || value.schemaVersion!==1 || !Array.isArray(value.orders) || !value.orders.length || value.orders.length>1000) throw Error('No es un respaldo compatible de Proway.');
     const seen = new Set(); let rowCount = 0;
@@ -148,7 +158,7 @@
     if (!value.shortCosts || Object.entries(value.shortCosts).some(([k,a])=>!['1','2','4','6','8','10','12','14','16','18','CH','M','G','XG','XXG','XXXG','4XG','A medida'].includes(k)||!Array.isArray(a)||a.length!==2||a.some(n=>!number(n)))) throw Error('Tarifas de short inválidas.');
     if (!value.isrControl || !/^\d{4}-\d{2}$/.test(value.isrControl.month) || !value.isrControl.external || Object.entries(value.isrControl.external).some(([m,a])=>!/^\d{4}-\d{2}$/.test(m)||!number(a.income)||!number(a.retention))) throw Error('Control mensual ISR inválido.');
     for (const k of ['revisions','jobs','exportsMade','activity']) if (!Array.isArray(value[k]) || value[k].length>10000) throw Error('Historial inválido.');
-    for(const r of value.revisions)if(!identifier(r.id)||!identifier(r.client)||!text(r.name,200)||!Number.isInteger(r.version)||r.version<1||!text(r.time,100)||!validDocument(r.data)||(r.quote&&!validQuote(r.quote))||(r.images&&(!image(r.images.front)||!image(r.images.back)))||!validDesigns(r.additionalDesigns))throw Error('Versión de documento inválida.');
+    for(const r of value.revisions)if(!identifier(r.id)||!identifier(r.client)||!text(r.name,200)||!Number.isInteger(r.version)||r.version<1||!text(r.time,100)||!validDocument(r.data)||(r.quote&&!validQuote(r.quote))||(r.images&&(!image(r.images.front)||!image(r.images.back)))||!validDesigns(r.additionalDesigns)||!validDesignOrders(r.designOrders))throw Error('Versión de documento inválida.');
     for(const a of value.activity)if(!identifier(a.client)||!text(a.time,100)||!text(a.action,4000))throw Error('Movimiento de historial inválido.');
     for(const j of value.jobs)if(!Number.isInteger(j.version)||j.version<1||!text(j.label,1000))throw Error('Enlace del historial inválido.');
     if (!value.profile || !text(value.profile.id,100) || !text(value.profile.name,200)) throw Error('Perfil local inválido.');
@@ -176,12 +186,12 @@
   function logoData(){const img=document.getElementById('pia-proway-logo');if(!img?.naturalWidth)throw Error('El logo aún no está disponible. Reintenta la descarga.');const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}
   function pdf(rev,logo,title) {
     const quote = rev.source==='cotizacion', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
-    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:labels||rev.source==='corte'?'letter':'a4'});
+    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:labels||['corte','diseno_lote'].includes(rev.source)?'letter':'a4'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
     if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(clean(title),margin,40);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((['finanzas','corte'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name+' · v'+rev.version),margin,47);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((['finanzas','corte','diseno_lote'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name+' · v'+rev.version),margin,47);
     doc.text(new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}),width-margin,18,{align:'right'});}
     let y = 54;
     const line = (label,value,bold=false) => {
@@ -230,6 +240,19 @@
         for(const [n,text] of lines.entries()){const wrapped=doc.splitTextToSize(clean(text),cellW-5).slice(0,n<3?2:1);doc.text(wrapped,x+2.5,labelY);labelY+=3.3*wrapped.length+.7;}
         doc.setFont('helvetica','bold');doc.text(clean((r[8]||rev.client)+' · '+r[0]+' de '+(r[9]??rows.length)),x+2.5,top+cellH-4);
       });
+    } else if(rev.source==='diseno_lote') {
+      paragraphs('Listado para preparar Diseño. La impresión se libera en cada pedido después de validar pedido, cotización, diseño y anticipo.');
+      for(const row of rev.data.summary||[])line(row[0],row[1]);
+      for(const table of rev.data.extraTables||[]){
+        if(y>height-50){doc.addPage();y=22;}
+        paragraphs(table.title);
+        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[table.heads.map(clean)],body:table.rows.map(r=>r.map(clean)),styles:{font:'helvetica',fontSize:9,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]}});y=doc.lastAutoTable.finalY+10;
+      }
+      for(const order of rev.designOrders||[]){
+        doc.addPage();y=22;paragraphs(order.name+' · '+order.id+'\n'+order.status);
+        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[order.data.heads.map(clean)],body:order.data.rows.map(r=>r.map(clean)),styles:{font:'helvetica',fontSize:9,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{3:{halign:'right',cellWidth:17},4:{cellWidth:38},7:{cellWidth:49}},didDrawPage:()=>{if(doc.internal.getCurrentPageInfo().pageNumber>1){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(clean(order.name+' · '+order.id),margin,12);}}});y=doc.lastAutoTable.finalY+10;
+        drawArtwork(order,order.name+' · '+order.id,true);
+      }
     } else {
       doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)&&typeof v==='number'?money(v):clean(v))),styles:{font:'helvetica',fontSize:8,cellPadding:2.4},headStyles:{fillColor:[23,42,61]}});
       y=(doc.lastAutoTable?.finalY||y)+9;
@@ -239,29 +262,33 @@
         doc.autoTable({startY:y,margin:{left:margin,right:margin},head:[table.heads.map(clean)],body:table.rows.map(r=>r.map((v,i)=>table.money.includes(i)&&typeof v==='number'?money(v):clean(v))),styles:{font:'helvetica',fontSize:8,cellPadding:2.4},headStyles:{fillColor:[23,105,64]}});y=(doc.lastAutoTable?.finalY||y)+9;
       }
     }
-    const artwork=rev.quote||rev,sets=[{name:'Diseño principal',images:artwork.images},...(artwork.additionalDesigns||[])].filter(d=>d.images&&Object.values(d.images).some(Boolean));
-    if(sets.length){
-      if(!quote){doc.addPage();y=22;}
+    function drawArtwork(artwork,owner='',fresh=false){
+      const sets=artworkSets(artwork);
+      if(!sets.length)return;
+      if(fresh){doc.addPage();y=22;}
       for(const design of sets){
-        const imageHeight=quote?72:95;if(y>height-imageHeight-42){doc.addPage();y=22;}
-        doc.setTextColor(30,40,50);doc.setFont('helvetica','bold');doc.setFontSize(12);
-        const title=doc.splitTextToSize(clean(design.name),width-2*margin);doc.text(title,margin,y);y+=title.length*5+3;
+        doc.setFont('helvetica','bold');doc.setFontSize(12);
+        const imageHeight=quote?72:95,title=doc.splitTextToSize(clean((owner?owner+' · ':'')+design.name),width-2*margin);
+        if(y>height-imageHeight-title.length*5-34){doc.addPage();y=22;}
+        doc.setTextColor(30,40,50);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(title,margin,y);y+=title.length*5+3;
         const cellW=(width-2*margin-12)/2;
         for(const [index,side] of ['front','back'].entries()){
           const data=design.images[side],x=margin+index*(cellW+12);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(side==='front'?'Delantero':'Trasero',x,y);
-          if(!data)continue;const props=doc.getImageProperties(data),scale=Math.min(cellW/props.width,imageHeight/props.height),w=props.width*scale,h=props.height*scale;
+          if(!data){doc.text('Imagen pendiente',x,y+12);continue;}
+          const props=doc.getImageProperties(data),scale=Math.min(cellW/props.width,imageHeight/props.height),w=props.width*scale,h=props.height*scale;
           doc.addImage(data,props.fileType,x+(cellW-w)/2,y+4,w,h);
         }
         y+=imageHeight+16;
       }
     }
+    drawArtwork(rev.quote||rev,'',!quote);
     for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quote){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
     return doc.output('blob');
   }
   async function excel(rev,title) {
     const wb=new ExcelJS.Workbook();wb.creator='Proway';wb.created=new Date();
     const sheet=wb.addWorksheet('Documento'), d=rev.data;
-    sheet.addRow(['','',title]);sheet.addRow(['','',(['finanzas','corte'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
+    sheet.addRow(['','',title]);sheet.addRow(['','',(['finanzas','corte','diseno_lote'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
     sheet.mergeCells('A1:B3');
     const mark=wb.addImage({base64:logoData(),extension:'png'});sheet.addImage(mark,{tl:{col:0,row:0},ext:{width:170,height:54}});
     if(rev.source==='cotizacion'){sheet.addRow(['Cotización / proforma - sin timbrar. No es CFDI.']);sheet.addRow([{text:'proway.com.mx',hyperlink:'https://proway.com.mx'},{text:'WhatsApp: 33 1007 9695',hyperlink:'https://wa.me/523310079695'}]);}
@@ -329,17 +356,18 @@
       template.columns.forEach(c=>c.width=20);template.getRow(1).font={bold:true};template.views=[{state:'frozen',ySplit:1}];
       const instructions=wb.addWorksheet('Instrucciones');instructions.addRow(['Completa solo la pestaña Pedido cliente.']);instructions.addRow(['Producto: Butarga, Playera o Short. Corte: Hombre o Mujer. Cantidad: entero positivo.']);instructions.addRow(['Guarda el archivo y vuelve a importarlo en la app. El precio final se fija en la cotización de Proway.']);instructions.getColumn(1).width=100;
     }
-    if(rev.source==='diseño'){
-      const names=wb.addWorksheet('Nombres para diseño');names.addRow(['Cliente',rev.name]);names.addRow(['Nombre','Cantidad','Producto','Talla','Corte','Color','Diseño','Indicaciones']);
-      for(const r of d.rows)names.addRow([r[4],r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'']);
-      names.columns.forEach((c,i)=>{c.width=i===0?30:19;c.font={name:'Arial',size:12};});names.getRow(2).font={name:'Arial',bold:true,size:12};names.views=[{state:'frozen',ySplit:2}];names.autoFilter={from:'A2',to:'H'+Math.max(2,names.rowCount)};
+    if(['diseño','diseno_lote'].includes(rev.source)){
+      const names=wb.addWorksheet('Nombres para diseño');names.addRow(['Cliente',rev.name]);names.addRow(['Nombre','Cantidad','Producto','Talla','Corte','Color','Diseño','Indicaciones',...(rev.source==='diseno_lote'?['Cliente','Folio']:[])]);
+      if(rev.source==='diseno_lote'){for(const order of rev.designOrders||[])for(const r of order.data.rows)names.addRow([r[4],r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'',order.name,order.id]);}
+      else for(const r of d.rows)names.addRow([r[4],r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'']);
+      names.columns.forEach((c,i)=>{c.width=i===0?30:19;c.font={name:'Arial',size:12};});names.getRow(2).font={name:'Arial',bold:true,size:12};names.views=[{state:'frozen',ySplit:2}];names.autoFilter={from:'A2',to:(rev.source==='diseno_lote'?'J':'H')+Math.max(2,names.rowCount)};
     }
     for(const table of d.extraTables||[]){
       const extra=wb.addWorksheet(table.title.slice(0,31));extra.addRow(['Proway',rev.name]);extra.addRow(table.heads);
       for(const values of table.rows){const row=extra.addRow(values);row.eachCell((c,i)=>{c.font={name:'Arial',size:11};if(table.money.includes(i-1))c.numFmt='"$"#,##0.00';});}
       extra.columns.forEach(c=>{c.width=22;c.alignment={vertical:'top',wrapText:true};});extra.getRow(2).font={bold:true};extra.views=[{state:'frozen',ySplit:2}];
     }
-    const artwork=rev.quote||rev,sets=[{name:'Diseño principal',images:artwork.images},...(artwork.additionalDesigns||[])].filter(d=>d.images&&Object.values(d.images).some(Boolean));
+    const sets=rev.source==='diseno_lote'?(rev.designOrders||[]).flatMap(o=>artworkSets(o).map(d=>({...d,name:o.name+' · '+o.id+' · '+d.name}))):artworkSets(rev.quote||rev);
     if(sets.length){
       const designs=wb.addWorksheet('Diseño');designs.getColumn(1).width=60;let row=1;
       for(const design of sets){
@@ -352,7 +380,7 @@
       }
       designs.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     }
-    if(['etiquetas','etiquetas_lote','corte'].includes(rev.source))for(const page of wb.worksheets)page.pageSetup={...page.pageSetup,paperSize:1,orientation:rev.source==='corte'?'landscape':page.pageSetup.orientation,fitToPage:true,fitToWidth:1,fitToHeight:0};
+    if(['etiquetas','etiquetas_lote','corte','diseno_lote'].includes(rev.source))for(const page of wb.worksheets)page.pageSetup={...page.pageSetup,paperSize:1,orientation:rev.source==='corte'?'landscape':page.pageSetup.orientation,fitToPage:true,fitToWidth:1,fitToHeight:0};
     const buffer=await wb.xlsx.writeBuffer();return new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
   async function blankCustomerTemplate(){

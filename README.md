@@ -1,4 +1,6 @@
-# Proway Pedidos 1.9.2
+# Proway Pedidos 1.10.0
+
+La versión 1.10.0 agrega **Taller → Diseño → Agrupar pedidos para Diseño**, también disponible en el menú izquierdo **Varios pedidos**. Selecciona todos, solo los pendientes de liberar a costura o algunos clientes. Revisa el conteo por talla/corte y todos sus nombres, colores, indicaciones e imágenes por cliente. Exporta un PDF Carta con cada pedido identificado o un Excel con Nombres para diseño, conteos y vistas del diseño. Las versiones guardadas conservan el contenido emitido. La selección funciona sin conexión, es local a cada dispositivo y no altera pedidos, cobros, fechas ni aprobaciones. Una diseñadora con acceso al mismo equipo puede seleccionar los pedidos sincronizados desde su cuenta; para recibir cambios necesita conexión.
 
 La versión 1.9.2 agrega **Descripción u observaciones** en **Pedido → Agregar prenda** y **Prendas → Editar esta prenda**. Admite hasta 500 caracteres y conserva las indicaciones anteriores. El campo llega a los listados y exportaciones de Pedido, Diseño, Costura y Empaque. La plantilla vacía incluye Observaciones; al importar Excel o CSV se conservan también las columnas Indicaciones, Indicaciones de impresión o Descripción. Las notas son por prenda y se consultan en el taller; la cotización del cliente mantiene su información actual. También se puede capturar el código del diseño al agregar la prenda.
 
