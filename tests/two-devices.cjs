@@ -77,7 +77,7 @@ function rpc(args){const {action,payload:p={}}=args;model.calls++;
   await a.context.setOffline(false);await a.page.evaluate(()=>ProwayCollaboration.sync(true));await b.page.evaluate(()=>ProwayCollaboration.sync(true));
   ok('One product catalog synchronizes from phone to computer',model.settings.productPrices.Playera===315&&(await saved(b.page)).productPrices.Short===185&&C.equal(model.orders,unchangedOrders));
   await a.page.locator('[data-screen="inicio"]').click();await a.page.locator('[data-action="new-order"]').click();
-  for(const product of ['Playera','Short']){await a.page.locator('#pia-add-product').selectOption(product);await a.page.locator('#pia-add-form button[type=submit]').click();}
+  for(const product of ['Playera','Short']){await a.page.locator('#pia-add-product').selectOption(product);await a.page.locator('#pia-add-design').fill('Código de prueba');await a.page.locator('#pia-add-observations').fill('Indicaciones de '+product);await a.page.locator('#pia-add-form button[type=submit]').click();}
   await a.page.evaluate(()=>ProwayPlatform.flush());const pricedId=(await saved(a.page)).activeOrderId;await a.page.evaluate(()=>ProwayCollaboration.sync(true));await b.page.evaluate(()=>ProwayCollaboration.sync(true));const priced=(await saved(a.page)).orders.find(o=>o.id===pricedId),paired=(await saved(b.page)).orders.find(o=>o.id===pricedId);
   ok('Both devices receive captured prices for each product in the same new order',priced.rows[0].special===315&&priced.rows[1].special===185&&priced.rows.every(r=>r.priceMode==='auto')&&C.equal(priced,paired));
   await a.page.locator('[data-screen="cobro"]').click();await a.page.locator('#pia-bulk-prices summary').click();
@@ -86,6 +86,7 @@ function rpc(args){const {action,payload:p={}}=args;model.calls++;
   await a.page.evaluate(()=>ProwayPlatform.flush());await a.page.evaluate(()=>ProwayCollaboration.sync(true));await b.page.evaluate(()=>ProwayCollaboration.sync(true));const bulkA=(await saved(a.page)).orders.find(o=>o.id===pricedId),bulkB=(await saved(b.page)).orders.find(o=>o.id===pricedId);
   ok('Bulk quote prices synchronize together from phone to computer',bulkA.rows[0].special===330&&bulkA.rows[1].special===170&&bulkA.rows.every(r=>r.priceMode==='manual')&&C.equal(bulkA,bulkB));
   ok('Editing quote prices preserves the shared product catalog',model.settings.productPrices.Playera===315&&model.settings.productPrices.Short===185);
+  ok('Garment notes and design codes survive creation, bulk pricing and collaboration',bulkB.rows.every(r=>r.placement==='Indicaciones de '+r.product&&r.design==='Código de prueba'));
   ok('Cellular and desktop layouts fit',await a.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)&&await b.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   ok('Test contacts only its isolated HTTP model',unexpected.length===0);ok('Two-device workflows raise no JavaScript errors',errors.length===0);fs.writeFileSync(path.join(out,'two-devices-checks.json'),JSON.stringify({passed:checks.length,checks,errors,simulated:true},null,2));console.log(JSON.stringify({passed:checks.length,errors}));
  }finally{await browser?.close();server.kill();}

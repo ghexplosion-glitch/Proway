@@ -359,3 +359,5 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-bulk-price-row .pia-field{min-width:0;font-size:12px}
 #pia-offline-app .pia-bulk-price-row .pia-check{margin:0}
 #pia-offline-app .pia-bulk-prices button{white-space:normal}
+
+#pia-offline-app .pia-garment-observations{white-space:pre-wrap;overflow-wrap:anywhere}

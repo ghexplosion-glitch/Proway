@@ -1,4 +1,6 @@
-# Proway Pedidos 1.9.1
+# Proway Pedidos 1.9.2
+
+La versión 1.9.2 agrega **Descripción u observaciones** en **Pedido → Agregar prenda** y **Prendas → Editar esta prenda**. Admite hasta 500 caracteres y conserva las indicaciones anteriores. El campo llega a los listados y exportaciones de Pedido, Diseño, Costura y Empaque. La plantilla vacía incluye Observaciones; al importar Excel o CSV se conservan también las columnas Indicaciones, Indicaciones de impresión o Descripción. Las notas son por prenda y se consultan en el taller; la cotización del cliente mantiene su información actual. También se puede capturar el código del diseño al agregar la prenda.
 
 La versión 1.9.1 permite cambiar precios por producto desde **Cotización y cobro → Editar precio base de varios productos**. Marca Playera, Short o Butarga, captura el precio base por prenda y usa **Aplicar precios seleccionados**. Se aplica a todas las tallas y cortes de los productos elegidos; puedes activar **Conservar precios especiales** para mantener las excepciones. Cambiar un importe requiere revisar la aprobación, conserva cobros y documentos emitidos y crea un respaldo antes de aplicar. El catálogo general conserva sus precios.
 
