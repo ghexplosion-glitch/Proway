@@ -250,7 +250,7 @@
       }
       for(const order of rev.designOrders||[]){
         doc.addPage();y=22;paragraphs(order.name+' · '+order.id+'\n'+order.status);
-        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[order.data.heads.map(clean)],body:order.data.rows.map(r=>r.map(clean)),styles:{font:'helvetica',fontSize:9,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{3:{halign:'right',cellWidth:17},4:{cellWidth:38},7:{cellWidth:49}},didDrawPage:()=>{if(doc.internal.getCurrentPageInfo().pageNumber>1){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(clean(order.name+' · '+order.id),margin,12);}}});y=doc.lastAutoTable.finalY+10;
+        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[order.data.heads.map(clean)],body:order.data.rows.map(r=>r.map(clean)),styles:{font:'helvetica',fontSize:9,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{3:{halign:'right',cellWidth:21},4:{cellWidth:38},7:{cellWidth:49}},didDrawPage:tablePage=>{if(tablePage.pageNumber>1){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(doc.splitTextToSize(clean(order.name+' · '+order.id),width-2*margin).slice(0,2),margin,9);}}});y=doc.lastAutoTable.finalY+10;
         drawArtwork(order,order.name+' · '+order.id,true);
       }
     } else {

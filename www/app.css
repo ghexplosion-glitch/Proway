@@ -366,3 +366,5 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-design-batch-order>summary{font-size:15px;font-weight:600}
 #pia-offline-app .pia-design-batch-order .pia-doc-table td{white-space:pre-line}
 #pia-offline-app .pia-design-batch .pia-batch-check small{display:block;margin-top:5px;line-height:1.5}
+#pia-offline-app .pia-design-batch-order .pia-doc-table{min-width:760px}
+#pia-offline-app .pia-design-batch-order .pia-doc-table th,#pia-offline-app .pia-design-batch-order .pia-doc-table td{overflow-wrap:normal;word-break:normal}
