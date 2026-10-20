@@ -368,3 +368,12 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-design-batch .pia-batch-check small{display:block;margin-top:5px;line-height:1.5}
 #pia-offline-app .pia-design-batch-order .pia-doc-table{min-width:760px}
 #pia-offline-app .pia-design-batch-order .pia-doc-table th,#pia-offline-app .pia-design-batch-order .pia-doc-table td{overflow-wrap:normal;word-break:normal}
+
+#pia-offline-app .pia-individual-prices{border:1px solid var(--pia-line);border-radius:12px;padding:13px;margin:16px 0;min-width:0}
+#pia-offline-app .pia-individual-prices>summary{font-size:15px;font-weight:600}
+#pia-offline-app .pia-individual-price{padding:15px 0;border-bottom:1px solid var(--pia-line);min-width:0;overflow-wrap:anywhere}
+#pia-offline-app .pia-individual-price:last-of-type{border-bottom:0}
+#pia-offline-app .pia-individual-price .pia-field{display:block;margin:12px 0 8px;font-size:13px}
+#pia-offline-app .pia-individual-price input{margin-top:6px;font-size:17px}
+#pia-offline-app .pia-individual-price>small{margin-top:6px;line-height:1.5}
+#pia-offline-app .pia-individual-price button{white-space:normal}
