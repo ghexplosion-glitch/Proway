@@ -22,6 +22,7 @@
   let financeScope='approved',includeGeneral=true;
   const selections={approved:null,pending:null};
   const hasCash=o=>Boolean(o.advanceRecord&&!o.advanceRecord.simulated&&(o.advanceRecord.amount||o.advanceRecord.retention))||o.payments.some(p=>!p.simulated&&(p.amount||p.retention));
+  function reset(){selected=null;batchMode='none';financeScope='approved';includeGeneral=true;selections.approved=null;selections.pending=null;}
   function available(state,scope=financeScope){return state.orders.filter(o=>o.quoteStatus!=='discarded'&&o.rows.length&&(scope==='pending'?(o.quoteStatus!=='cancelled'&&!o.confirmed&&!hasCash(o)):(o.confirmed||hasCash(o)||o.quoteStatus==='cancelled'&&(state.expenses||[]).some(e=>e.client===o.id))));}
   function financeChosen(state,scope=financeScope){const list=available(state,scope);if(selections[scope]===null)selections[scope]=new Set(list.map(o=>o.id));return list.filter(o=>selections[scope].has(o.id));}
   const costCategory=e=>({'Sublimación y corte':'supplier','Tela':'fabric','Costura':'sewing','Envío':'shipping'}[e.category]||'other');
@@ -91,5 +92,5 @@
       app.edit(s=>{s.expenses.push({id:'E-'+crypto.randomUUID(),date,category:String(f.get('category')),amount:total,baseAmount:round(base),iva,client:String(f.get('client')||''),note:String(f.get('note')||'')});},'Egreso pagado con IVA separado');app.announce('Egreso guardado. Base '+money(base)+' · IVA '+money(iva)+' · total '+money(total)+'.');
     });
   }
-  window.ProwayFinance={batchScreen,batchDocument,batchName,financeScreen,financeDocument,financeName,totals,forecast,costEditor,bind};
+  window.ProwayFinance={batchScreen,batchDocument,batchName,financeScreen,financeDocument,financeName,totals,forecast,costEditor,bind,reset};
 })();
