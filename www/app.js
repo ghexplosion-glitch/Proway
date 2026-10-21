@@ -430,7 +430,7 @@
     if(a==='repeat-order'){await repeatOrder(b);return true;}
     if(a==='new-order'){const id=ProwayWorkflow.newFolio(demoDay,()=>crypto.randomUUID(),orders.map(r=>r.id));viewingCompleted=false;orders.push(blankOrder(id,'Cliente nuevo'));selected=orders.length-1;record('Pedido nuevo creado');go('pedido');return true;}
     if(a==='backup'){ProwayPlatform.backup(serializeState());record('Respaldo completo descargado','base');announce('Respaldo descargado. Puedes guardarlo en Drive o importarlo en otro equipo.');return true;}
-    if(a==='restore-data'){if(!restoreStage)return true;await ProwayPlatform.checkpoint('Antes de recuperar un respaldo');restoreState(restoreStage);restoreStage=null;record('Base restaurada desde respaldo','base');await ProwayPlatform.flush();render();announce('Pedidos y tarifas recuperados. Revisa los datos pendientes de cada pedido.');return true;}
+    if(a==='restore-data'){if(!restoreStage)return true;await ProwayPlatform.checkpoint('Antes de recuperar un respaldo');restoreState(restoreStage);moneyTab='resumen';restoreStage=null;record('Base restaurada desde respaldo','base');await ProwayPlatform.flush();render();announce('Pedidos y tarifas recuperados. Revisa los datos pendientes de cada pedido.');return true;}
     if(a==='run-export'){const rev=utility.savedId?revisions.find(x=>x.id===utility.savedId):saveRevision(utility.source);utility.savedId=rev.id;try{await exportRevision(rev,format);resultMessage=format==='sheets'?'Excel descargado para Google Sheets. Al conectar, abre Sheets e importa el archivo.':'Archivo '+exportName(rev,format==='pdf'?'pdf':'xlsx')+' descargado.';}catch(err){resultMessage='No se pudo exportar: '+err.message;}render();return true;}
     if(a==='queue-link'){const rev=utility.savedId?revisions.find(x=>x.id===utility.savedId):saveRevision('cotizacion');try{utility.shareUrl=await ProwayPlatform.quoteLink(rev.quote,rev.version,rev.issuedAt);if(!jobs.some(j=>j.revisionId===rev.id&&j.kind==='link'))jobs.push({kind:'link',revisionId:rev.id,version:rev.version,label:'Enlace listo · '+rev.client,url:utility.shareUrl,status:'ready'});record('Enlace del cliente preparado','cotizacion');resultMessage='Enlace de consulta listo. Incluye solo cotización y diseño; quien tenga el enlace podrá abrirlo.';}catch(err){resultMessage=err.message;}render();return true;}
     if(a==='copy-link'){try{await navigator.clipboard.writeText(utility.shareUrl);announce('Enlace copiado.');}catch{announce('Mantén pulsado el campo del enlace y elige Copiar.');}return true;}
@@ -512,6 +512,7 @@
           await ProwayPlatform.checkpoint('Antes de editar prendas de '+(draft.originalRows[0].printed||'persona sin nombre'));
           if(!editable()||!ProwaySyncCore.equal(before,r)||!ProwaySyncCore.equal(prices,productPrices)||!ProwayPersonOrder.sameSource(draft,r))throw Error('El pedido cambió mientras se guardaba el respaldo. Vuelve a abrir la persona y revisa los datos.');
         }
+        if(orders.reduce((n,order)=>n+order.rows.length,0)-sourceIds.size+inputs.length>10000)throw Error('La base cambió y supera 10,000 renglones. No se guardaron cambios.');
         const rows=edited.map(row=>row.id===undefined?makeRows([row])[0]:row);
         if(draft.editing){
           // Replace each existing row in place; append only genuinely new articles.
