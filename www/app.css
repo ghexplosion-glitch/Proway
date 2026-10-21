@@ -403,3 +403,5 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-person-card button{min-height:44px;width:100%;margin-top:8px}
 #pia-offline-app .pia-order-prices{padding:14px 0;margin:16px 0;border-top:1px solid var(--pia-line);border-bottom:1px solid var(--pia-line)}
 #pia-offline-app #pia-order-designs>.pia-panel{border:0;padding:12px 0;margin:12px 0 0}
+#pia-offline-app #pia-person-form .pia-help{display:block;line-height:1.6;overflow-wrap:anywhere}
+#pia-offline-app #pia-person-form .pia-batch-actions>.pia-primary{background:var(--pia-green);color:var(--pia-on-green);border-color:var(--pia-green);font-size:14px;font-weight:600}
