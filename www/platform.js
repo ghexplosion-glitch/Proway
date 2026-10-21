@@ -357,10 +357,12 @@
       const instructions=wb.addWorksheet('Instrucciones');instructions.addRow(['Completa solo la pestaña Pedido cliente.']);instructions.addRow(['Producto: Butarga, Playera o Short. Corte: Hombre o Mujer. Cantidad: entero positivo.']);instructions.addRow(['Guarda el archivo y vuelve a importarlo en la app. El precio final se fija en la cotización de Proway.']);instructions.getColumn(1).width=100;
     }
     if(['diseño','diseno_lote'].includes(rev.source)){
-      const names=wb.addWorksheet('Nombres para diseño');names.addRow(['Cliente',rev.name]);names.addRow(['Nombre','Cantidad','Producto','Talla','Corte','Color','Diseño','Indicaciones',...(rev.source==='diseno_lote'?['Cliente','Folio']:[])]);
-      if(rev.source==='diseno_lote'){for(const order of rev.designOrders||[])for(const r of order.data.rows)names.addRow([r[4],r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'',order.name,order.id]);}
-      else for(const r of d.rows)names.addRow([r[4],r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'']);
-      names.columns.forEach((c,i)=>{c.width=i===0?30:19;c.font={name:'Arial',size:12};});names.getRow(2).font={name:'Arial',bold:true,size:12};names.views=[{state:'frozen',ySplit:2}];names.autoFilter={from:'A2',to:(rev.source==='diseno_lote'?'J':'H')+Math.max(2,names.rowCount)};
+      const names=wb.addWorksheet('Nombres para diseño'),split=value=>window.ProwayPersonOrder?.splitPrintingText(value)||{name:value,number:''};
+      names.addRow(['Cliente',rev.name]);names.addRow(['Nombre','Cantidad','Producto','Talla','Corte','Color','Diseño','Indicaciones',...(rev.source==='diseno_lote'?['Cliente','Folio']:[]),'Número']);
+      const addName=(r,client,folio)=>{const p=split(r[4]);names.addRow([p.name,r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'',...(rev.source==='diseno_lote'?[client,folio]:[]),p.number]);};
+      if(rev.source==='diseno_lote'){for(const order of rev.designOrders||[])for(const r of order.data.rows)addName(r,order.name,order.id);}
+      else for(const r of d.rows)addName(r,rev.name,rev.client);
+      names.columns.forEach((c,i)=>{c.width=i===0?30:19;c.font={name:'Arial',size:12};});names.getRow(2).font={name:'Arial',bold:true,size:12};names.views=[{state:'frozen',ySplit:2}];names.autoFilter={from:'A2',to:(rev.source==='diseno_lote'?'K':'I')+Math.max(2,names.rowCount)};
     }
     for(const table of d.extraTables||[]){
       const extra=wb.addWorksheet(table.title.slice(0,31));extra.addRow(['Proway',rev.name]);extra.addRow(table.heads);

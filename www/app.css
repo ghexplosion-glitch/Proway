@@ -377,3 +377,15 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-individual-price input{margin-top:6px;font-size:17px}
 #pia-offline-app .pia-individual-price>small{margin-top:6px;line-height:1.5}
 #pia-offline-app .pia-individual-price button{white-space:normal}
+
+#pia-offline-app .pia-person-order{min-width:0}
+#pia-offline-app .pia-person-order>summary{font-size:16px;font-weight:600}
+#pia-offline-app .pia-person-order .pia-field{display:block;font-size:13px;min-width:0}
+#pia-offline-app .pia-person-order input,#pia-offline-app .pia-person-order select,#pia-offline-app .pia-person-order textarea{display:block;margin-top:6px}
+#pia-offline-app .pia-person-item{border:1px solid var(--pia-line);border-radius:12px;padding:12px;margin:12px 0;min-width:0}
+#pia-offline-app .pia-person-item h4{margin:0 0 12px;font-size:15px;font-weight:600}
+#pia-offline-app .pia-person-item details{margin-top:12px}
+#pia-offline-app .pia-person-item .pia-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+#pia-offline-app .pia-person-notes{margin:14px 0}
+#pia-offline-app .pia-person-order small{line-height:1.5}
+#pia-offline-app .pia-person-order button{white-space:normal}
