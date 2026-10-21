@@ -1,3 +1,4 @@
+const {addGarment}=require('./order-editor.cjs');
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const W=require('../www/workflow.js'),C=require('../www/collaboration-core.js');
@@ -82,7 +83,7 @@ const checks=[],ok=(name,value)=>{assert(value,name);checks.push(name);};
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:field.x+15,y:field.y+20}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:field.x+field.width-15,y:field.y+22}]});await page.waitForTimeout(80);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   ok('Dragging a field does not switch departments or change its data',await page.locator('[data-work="envío"]').getAttribute('aria-pressed')==='true'&&(await saved()).orders[1].contact==='Antes del gesto');
   await page.locator('[data-screen="inicio"]').click();await page.locator('[data-action="new-order"]').click();current=await saved();const fresh=current.orders.at(-1);ok('New quote starts with a new PRW folio',/^PRW-\d{4}-[0-9A-F]{12}$/.test(fresh.id));
-  await page.locator('#pia-add-form button[type=submit]').click();await page.locator('#pia-data-ok').check();await page.locator('[data-screen="cobro"]').click();await page.locator('#pia-payer-type').selectOption('PF');await page.locator('[data-action="approve-quote"]').click();
+  await addGarment(page);await page.locator('#pia-data-ok').check();await page.locator('[data-screen="cobro"]').click();await page.locator('#pia-payer-type').selectOption('PF');await page.locator('[data-action="approve-quote"]').click();
   ok('Quote approval keeps the same folio and creates no second order',(await saved()).orders.at(-1).id===fresh.id&&(await saved()).orders.length===6);
   await page.locator('[data-action="preview-document"]').click();ok('Quote preview uses the order folio exactly',(await page.locator('.pia-doc-id').innerText()).startsWith(fresh.id));
   await page.screenshot({path:path.join(out,'proposal-quote-mobile.png'),fullPage:true});

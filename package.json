@@ -1,11 +1,11 @@
 {
   "name": "proway-pedidos",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "private": true,
   "description": "Pedidos textiles sin conexión con colaboración por departamento",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node tests/collaboration-core.cjs && node tests/product-pricing.cjs && node tests/garment-notes.cjs && node tests/design-batch.cjs && node tests/bulk-prices.cjs && node tests/individual-prices.cjs && node tests/person-order.cjs && node tests/product-pricing-browser.cjs && node tests/smoke.cjs && node tests/upgrade.cjs && node tests/workshop.cjs && node tests/design-labels.cjs && node tests/labels-letter.cjs && node tests/quote-profit.cjs && node tests/quote-review.cjs && node tests/preview.cjs && node tests/lifecycle.cjs && node tests/closing-cuts.cjs && node tests/operations.cjs && node tests/two-devices.cjs && node tests/proposal-workflow.cjs",
+    "test": "node tests/collaboration-core.cjs && node tests/product-pricing.cjs && node tests/garment-notes.cjs && node tests/design-batch.cjs && node tests/bulk-prices.cjs && node tests/individual-prices.cjs && node tests/person-order.cjs && node tests/unified-order.cjs && node tests/product-pricing-browser.cjs && node tests/smoke.cjs && node tests/upgrade.cjs && node tests/workshop.cjs && node tests/design-labels.cjs && node tests/labels-letter.cjs && node tests/quote-profit.cjs && node tests/quote-review.cjs && node tests/preview.cjs && node tests/lifecycle.cjs && node tests/closing-cuts.cjs && node tests/operations.cjs && node tests/two-devices.cjs && node tests/proposal-workflow.cjs",
     "test:preview": "node tests/preview.cjs"
   },
   "engines": {

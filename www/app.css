@@ -389,3 +389,17 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-person-notes{margin:14px 0}
 #pia-offline-app .pia-person-order small{line-height:1.5}
 #pia-offline-app .pia-person-order button{white-space:normal}
+/* Saved people and new garments share one editor. */
+#pia-offline-app #pia-person-editor{margin:16px 0;border:1px solid var(--pia-line);border-radius:12px;padding:14px;background:#f5faf7;scroll-margin-top:20px}
+#pia-offline-app #pia-person-editor>summary,#pia-offline-app #pia-person-list>summary,#pia-offline-app .pia-order-prices>summary{font-weight:600;cursor:pointer}
+#pia-offline-app #pia-person-form{margin-top:14px;scroll-margin-top:20px}
+#pia-offline-app #pia-person-list{margin-top:18px}
+#pia-offline-app #pia-person-search{width:100%;min-height:44px}
+#pia-offline-app .pia-person-list{display:grid;gap:10px;margin-top:12px}
+#pia-offline-app .pia-person-card{padding:14px;border:1px solid var(--pia-line);border-radius:12px;background:white;min-width:0;overflow-wrap:anywhere}
+#pia-offline-app .pia-person-card[hidden]{display:none}
+#pia-offline-app .pia-person-card>strong,#pia-offline-app .pia-person-card>small{display:block}
+#pia-offline-app .pia-person-card p{line-height:1.6;font-size:13px;margin:8px 0}
+#pia-offline-app .pia-person-card button{min-height:44px;width:100%;margin-top:8px}
+#pia-offline-app .pia-order-prices{padding:14px 0;margin:16px 0;border-top:1px solid var(--pia-line);border-bottom:1px solid var(--pia-line)}
+#pia-offline-app #pia-order-designs>.pia-panel{border:0;padding:12px 0;margin:12px 0 0}
