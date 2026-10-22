@@ -405,3 +405,13 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app #pia-order-designs>.pia-panel{border:0;padding:12px 0;margin:12px 0 0}
 #pia-offline-app #pia-person-form .pia-help{display:block;line-height:1.6;overflow-wrap:anywhere}
 #pia-offline-app #pia-person-form .pia-batch-actions>.pia-primary{background:var(--pia-green);color:var(--pia-on-green);border-color:var(--pia-green);font-size:14px;font-weight:600}
+/* Named designs can be assigned in batches without stretching the mobile page. */
+.pia-design-selection{margin-bottom:24px;border-bottom:1px solid var(--line,#dce5df);padding-bottom:20px}
+.pia-design-rows{max-height:340px;overflow-y:auto;overscroll-behavior:contain;border:1px solid #dce5df;border-radius:14px;padding:8px;margin-top:12px;scrollbar-gutter:stable}
+.pia-design-rows .pia-check{padding:12px 4px;border-bottom:1px solid #e8eeea;align-items:flex-start}
+.pia-design-rows .pia-check:last-child{border:0}
+.pia-design-rows .pia-check span{min-width:0;overflow-wrap:anywhere}
+.pia-design-rows .pia-check small{display:block;margin-top:4px;line-height:1.5}
+.pia-design-selection .pia-field{margin-top:14px}
+.pia-design-selection .pia-primary{width:100%;margin:16px 0 12px;white-space:normal}
+.pia-delete-review{margin:16px 0}

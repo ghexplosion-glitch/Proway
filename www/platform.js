@@ -90,7 +90,7 @@
   }
   function validShipping(s){return s===undefined||!!s&&typeof s==='object'&&!Array.isArray(s)&&number(s.amount)&&text(s.description,200)&&Object.keys(s).every(k=>['amount','description'].includes(k));}
   function validPlans(s){return s===undefined||!!s&&typeof s==='object'&&!Array.isArray(s)&&['fabric','sewing','shipping','other'].every(k=>number(s[k]))&&Object.keys(s).every(k=>['fabric','sewing','shipping','other'].includes(k));}
-  function validReviewRows(rows){return rows===undefined||Array.isArray(rows)&&rows.length<=10000&&rows.every(r=>r&&['Butarga','Playera','Short'].includes(r.product)&&['Hombre','Mujer'].includes(r.cut)&&text(r.size,30)&&Number.isInteger(r.qty)&&r.qty>=1&&r.qty<=10000&&text(r.color,1000)&&text(r.printed,1000));}
+  function validReviewRows(rows){return rows===undefined||Array.isArray(rows)&&rows.length<=10000&&rows.every(r=>r&&['Butarga','Playera','Short'].includes(r.product)&&['Hombre','Mujer'].includes(r.cut)&&text(r.size,30)&&Number.isInteger(r.qty)&&r.qty>=1&&r.qty<=10000&&text(r.color,1000)&&text(r.printed,1000)&&(r.design===undefined||text(r.design,500)));}
   function validQuote(q) {
     return !!q && identifier(q.id) && text(q.name,200) && text(q.contact||'',200) &&
       ['pending','PF','PM'].includes(q.payerType) && number(q.advance) && number(q.balance) &&
@@ -221,7 +221,7 @@
         if(y>height-52){doc.addPage();y=22;}
         doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Prendas para revisar',margin,y);y+=7;
         paragraphs('Revisa el color y el nombre exactamente como quieres que se impriman.');
-        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[['Prenda / talla / corte','Cant.','Color','Nombre impreso']],body:q.reviewRows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,clean(r.color||'Por confirmar'),clean(r.printed||'Sin nombre indicado')]),styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{0:{cellWidth:58},1:{cellWidth:16,halign:'right'},2:{cellWidth:30},3:{cellWidth:width-2*margin-104}}});
+        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[['Prenda / talla / corte','Cant.','Color','Nombre impreso / Diseño']],body:q.reviewRows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,clean(r.color||'Por confirmar'),clean((r.printed||'Sin nombre indicado')+(r.design?'\nDiseño: '+r.design:''))]),styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{0:{cellWidth:58},1:{cellWidth:16,halign:'right'},2:{cellWidth:30},3:{cellWidth:width-2*margin-104}}});
         y=doc.lastAutoTable.finalY+10;
       }
       if(show)paragraphs('Emisor: '+(q.issuer.name||'Nombre fiscal pendiente')+' | RFC: '+(q.issuer.rfc||'Pendiente')+' | C. P.: '+(q.issuer.cp||'Pendiente')+'\nRégimen: '+q.issuer.regime+' · Persona física\nReceptor: '+(q.fiscal.name||q.name)+' | RFC: '+(q.fiscal.rfc||'Pendiente')+' | C. P.: '+(q.fiscal.cp||'Pendiente')+'\nRégimen receptor: '+(q.fiscal.regime||'Pendiente')+' | Uso CFDI: '+(q.fiscal.use||'Pendiente')+'\nForma de pago: '+(q.fiscal.form||'Pendiente')+' | Método: '+(q.fiscal.method||'Pendiente'));

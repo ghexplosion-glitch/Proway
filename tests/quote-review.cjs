@@ -35,7 +35,7 @@ async function routeApp(context){await context.route('https://app.proway.test/**
   for(const width of [320,390,1024]){await page.setViewportSize({width,height:1100});ok('Review fits at '+width+'px',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
   await page.setViewportSize({width:390,height:1100});await page.screenshot({path:path.join(out,'quote-review-mobile.png'),fullPage:true});
   await download('quote-review.pdf');let state=await saved(),first=structuredClone(state.revisions.at(-1));
-  const projected=fixture.orders[0].rows.map(({product,size,cut,qty,color,printed})=>({product,size,cut,qty,color,printed}));
+  const projected=fixture.orders[0].rows.map(({product,size,cut,qty,color,printed,design})=>({product,size,cut,qty,color,printed,design:design||'Diseño principal'}));
   ok('Issued quote snapshots exact customer details without internal costs',JSON.stringify(first.quote.reviewRows)===JSON.stringify(projected)&&!JSON.stringify(first.quote.reviewRows).includes('special')&&!JSON.stringify(first.quote.reviewRows).includes('plannedCosts'));
   const pdf=fs.readFileSync(path.join(out,'quote-review.pdf')).toString('latin1');
   ok('PDF contains the review table and both color/name variations',pdf.includes('Nombre impreso')&&pdf.includes('Rojo')&&pdf.includes('Azul')&&pdf.includes('ANA')&&pdf.includes('LUISA'));
