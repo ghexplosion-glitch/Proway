@@ -220,7 +220,7 @@
       if(q.reviewRows?.length){
         if(y>height-52){doc.addPage();y=22;}
         doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Prendas para revisar',margin,y);y+=7;
-        paragraphs('Revisa el color y el nombre exactamente como quieres que se impriman.');
+        paragraphs('Revisa el color, el nombre y el diseño de cada prenda antes de aprobar.');
         doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[['Prenda / talla / corte','Cant.','Color','Nombre impreso / Diseño']],body:q.reviewRows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,clean(r.color||'Por confirmar'),clean((r.printed||'Sin nombre indicado')+(r.design?'\nDiseño: '+r.design:''))]),styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{0:{cellWidth:58},1:{cellWidth:16,halign:'right'},2:{cellWidth:30},3:{cellWidth:width-2*margin-104}}});
         y=doc.lastAutoTable.finalY+10;
       }

@@ -44,7 +44,7 @@
   }
   function focusImages(id){const main=document.getElementById('pia-main'),section=id==='primary'?main.querySelector('.pia-primary-design'):main.querySelector('[data-order-design="'+CSS.escape(id)+'"]');if(!section)return;for(let p=section.parentElement;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;section.scrollIntoView({block:'start'});}
   function bind(bridge){app=bridge;const root=document.getElementById('proway-pedidos-preview');
-    root.addEventListener('toggle',e=>{if(e.target.id==='pia-design-selection')draft(app.getState()).open=e.target.open;},true);
+    root.addEventListener('toggle',e=>{if(e.target.id==='pia-design-selection'&&e.target.isConnected)draft(app.getState()).open=e.target.open;},true);
     const update=x=>{const s=app.getState(),r=s.orders.find(x=>x.id===s.activeOrderId),d=draft(s);d.open=true;
       if(x.dataset.orderDesignRow){remember(d,r);const id=Number(x.dataset.orderDesignRow);d.selected=x.checked?[...new Set([...d.selected,id])]:d.selected.filter(a=>a!==id);}
       else if(x.id==='pia-design-filter')d.filter=x.value;
