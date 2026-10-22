@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict'),P=require('../www/presentation-order.js');
+const checks=[],ok=(name,result)=>{assert(result,name);checks.push(name);};
+const input=['G','12','4XG','CH','6','XXG','M','16','8','XG','XXXG','A medida','4','2','10','14','18'];
+ok('Child and adult sizes progress from the smallest to made-to-measure',JSON.stringify(input.slice().sort(P.compareSizes))===JSON.stringify(['2','4','6','8','10','12','14','16','18','CH','M','G','XG','XXG','XXXG','4XG','A medida']));
+for(const [a,b] of [['S','CH'],['L','G'],['XL','XG'],['XXL','XXG'],['2XL','XXG'],['3XL','XXXG'],['4XL','4XG']])ok('Equivalent imported size '+a+' matches '+b,P.compareSizes(a,b)===0);
+const rows=[{id:20,person:'Persona 10',size:'M',product:'Playera',qty:2,printed:'DIEZ · #00',price:350,designId:'D-1'},{id:10,person:'Persona 2',size:'M',product:'Short',qty:1,printed:'DOS · #09',price:200,designId:'D-2'},{id:30,person:'Persona 1',size:'CH',product:'Butarga',qty:3,printed:'UNO · #01',price:800,designId:null}];
+const original=structuredClone(rows),ordered=P.numbered(rows);
+ok('Rows sort by size then natural person order',ordered.map(x=>x.id).join(',')==='30,10,20');
+ok('Presentation numbers are consecutive after sorting',ordered.every((x,i)=>x.lineNo===i+1));
+ok('Sorting never mutates stored order data',JSON.stringify(rows)===JSON.stringify(original));
+ok('An alternative person-first list is explicit and deterministic',P.numbered(rows,'person').map(x=>x.person).join(',')==='Persona 1,Persona 2,Persona 10');
+ok('Printed numbers leading zeros prices design links and quantities are preserved',ordered.every(x=>Object.keys(original.find(r=>r.id===x.id)).every(k=>JSON.stringify(x[k])===JSON.stringify(original.find(r=>r.id===x.id)[k]))));
+const labels=P.pieces(rows);ok('Labels expand quantities into physical pieces with consecutive numbers',labels.length===6&&labels.every((x,i)=>x.lineNo===i+1&&x.qty===1));
+ok('Several pieces of one person retain the exact printed identity and design',labels.filter(x=>x.id===20).length===2&&labels.filter(x=>x.id===20).every(x=>x.printed==='DIEZ · #00'&&x.designId==='D-1'));
+ok('Empty lists remain empty',P.numbered([]).length===0&&P.pieces([]).length===0);
+ok('Unknown sizes sort deterministically before made-to-measure',P.compareSizes('Especial A','A medida')<0);
+console.log(JSON.stringify({passed:checks.length,area:'presentation-order'}));

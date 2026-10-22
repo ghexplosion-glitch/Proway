@@ -186,7 +186,7 @@
   function logoData(){const img=document.getElementById('pia-proway-logo');if(!img?.naturalWidth)throw Error('El logo aún no está disponible. Reintenta la descarga.');const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}
   function pdf(rev,logo,title) {
     const quote = rev.source==='cotizacion', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
-    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:labels||['corte','diseno_lote'].includes(rev.source)?'letter':'a4'});
+    const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:'letter'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
     if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
@@ -221,7 +221,7 @@
         if(y>height-52){doc.addPage();y=22;}
         doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Prendas para revisar',margin,y);y+=7;
         paragraphs('Revisa el color, el nombre y el diseño de cada prenda antes de aprobar.');
-        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[['Prenda / talla / corte','Cant.','Color','Nombre impreso / Diseño']],body:q.reviewRows.map(r=>[clean(r.product+' / '+r.size+' / '+r.cut),r.qty,clean(r.color||'Por confirmar'),clean((r.printed||'Sin nombre indicado')+(r.design?'\nDiseño: '+r.design:''))]),styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{0:{cellWidth:58},1:{cellWidth:16,halign:'right'},2:{cellWidth:30},3:{cellWidth:width-2*margin-104}}});
+        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[['Prenda / talla / corte','Cant.','Color','Nombre impreso / Diseño']],body:q.reviewRows.map((r,i)=>[clean((i+1)+'. '+r.product+' / '+r.size+' / '+r.cut),r.qty,clean(r.color||'Por confirmar'),clean((r.printed||'Sin nombre indicado')+(r.design?'\nDiseño: '+r.design:''))]),styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{0:{cellWidth:58},1:{cellWidth:16,halign:'right'},2:{cellWidth:30},3:{cellWidth:width-2*margin-104}}});
         y=doc.lastAutoTable.finalY+10;
       }
       if(show)paragraphs('Emisor: '+(q.issuer.name||'Nombre fiscal pendiente')+' | RFC: '+(q.issuer.rfc||'Pendiente')+' | C. P.: '+(q.issuer.cp||'Pendiente')+'\nRégimen: '+q.issuer.regime+' · Persona física\nReceptor: '+(q.fiscal.name||q.name)+' | RFC: '+(q.fiscal.rfc||'Pendiente')+' | C. P.: '+(q.fiscal.cp||'Pendiente')+'\nRégimen receptor: '+(q.fiscal.regime||'Pendiente')+' | Uso CFDI: '+(q.fiscal.use||'Pendiente')+'\nForma de pago: '+(q.fiscal.form||'Pendiente')+' | Método: '+(q.fiscal.method||'Pendiente'));
@@ -250,7 +250,7 @@
       }
       for(const order of rev.designOrders||[]){
         doc.addPage();y=22;paragraphs(order.name+' · '+order.id+'\n'+order.status);
-        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[order.data.heads.map(clean)],body:order.data.rows.map(r=>r.map(clean)),styles:{font:'helvetica',fontSize:9,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{3:{halign:'right',cellWidth:21},4:{cellWidth:38},7:{cellWidth:49}},didDrawPage:tablePage=>{if(tablePage.pageNumber>1){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(doc.splitTextToSize(clean(order.name+' · '+order.id),width-2*margin).slice(0,2),margin,9);}}});y=doc.lastAutoTable.finalY+10;
+        doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[['N.º',...order.data.heads.map(clean)]],body:order.data.rows.map((r,i)=>[i+1,...r.map(clean)]),styles:{font:'helvetica',fontSize:9,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{0:{cellWidth:12},4:{halign:'right',cellWidth:16},5:{cellWidth:35},8:{cellWidth:45}},didDrawPage:tablePage=>{if(tablePage.pageNumber>1){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(doc.splitTextToSize(clean(order.name+' · '+order.id),width-2*margin).slice(0,2),margin,9);}}});y=doc.lastAutoTable.finalY+10;
         drawArtwork(order,order.name+' · '+order.id,true);
       }
     } else {
@@ -349,7 +349,7 @@
     if(rev.quote&&rev.quote.tax.mode!=='none'&&rev.quote.showVat!==false){const q=rev.quote;sheet.addRow([]);for(const row of [['Emisor',q.issuer.name],['RFC emisor',q.issuer.rfc],['C. P. emisor',q.issuer.cp],['Régimen emisor',q.issuer.regime],['RFC receptor',q.fiscal.rfc],['Nombre fiscal receptor',q.fiscal.name],['C. P. receptor',q.fiscal.cp],['Régimen receptor',q.fiscal.regime],['Uso CFDI',q.fiscal.use],['Forma de pago',q.fiscal.form],['Método de pago',q.fiscal.method]])sheet.addRow(row);}
     if(rev.source==='cotizacion'&&rev.quote?.tax.mode==='included')sheet.addRow(['Documento histórico: se conservan los importes emitidos. Para recotizar usa los precios base de la app.']);
     sheet.columns.forEach((col,i)=>{col.width=Math.min(42,Math.max(15, String(d.heads[i]||'').length+4));col.alignment={vertical:'top',wrapText:true};});
-    sheet.views=[{state:'frozen',ySplit:header.number}];sheet.pageSetup={paperSize:9,orientation:d.heads.length>6?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
+    sheet.views=[{state:'frozen',ySplit:header.number}];sheet.pageSetup={paperSize:1,orientation:d.heads.length>6?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     if(rev.source==='pedido'){
       const template=wb.addWorksheet('Pedido cliente');template.addRow(['Producto','Talla','Corte','Cantidad','Nombre','Color','Diseño']);
       for(let i=2;i<=102;i++)for(let j=1;j<=7;j++){const c=template.getCell(i,j);c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F3E8'}};c.font={name:'Arial',size:12};}
@@ -358,11 +358,11 @@
     }
     if(['diseño','diseno_lote'].includes(rev.source)){
       const names=wb.addWorksheet('Nombres para diseño'),split=value=>window.ProwayPersonOrder?.splitPrintingText(value)||{name:value,number:''};
-      names.addRow(['Cliente',rev.name]);names.addRow(['Nombre','Cantidad','Producto','Talla','Corte','Color','Diseño','Indicaciones',...(rev.source==='diseno_lote'?['Cliente','Folio']:[]),'Número']);
-      const addName=(r,client,folio)=>{const p=split(r[4]);names.addRow([p.name,r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'',...(rev.source==='diseno_lote'?[client,folio]:[]),p.number]);};
+      names.addRow(['Cliente',rev.name]);names.addRow(['Nombre','Cantidad','Producto','Talla','Corte','Color','Diseño','Indicaciones',...(rev.source==='diseno_lote'?['Cliente','Folio']:[]),'Número','N.º']);
+      let sequence=0;const addName=(row,client,folio)=>{const r=row, p=split(r[4]);names.addRow([p.name,r[3],r[0],r[1],r[2],r[5],r[6],r[7]||'',...(rev.source==='diseno_lote'?[client,folio]:[]),p.number,++sequence]);};
       if(rev.source==='diseno_lote'){for(const order of rev.designOrders||[])for(const r of order.data.rows)addName(r,order.name,order.id);}
-      else for(const r of d.rows)addName(r,rev.name,rev.client);
-      names.columns.forEach((c,i)=>{c.width=i===0?30:19;c.font={name:'Arial',size:12};});names.getRow(2).font={name:'Arial',bold:true,size:12};names.views=[{state:'frozen',ySplit:2}];names.autoFilter={from:'A2',to:(rev.source==='diseno_lote'?'K':'I')+Math.max(2,names.rowCount)};
+      else for(const r of d.rows)addName(d.heads[0]==='N.º'?r.slice(1):r,rev.name,rev.client);
+      names.columns.forEach((c,i)=>{c.width=i===0?30:19;c.font={name:'Arial',size:12};});names.getRow(2).font={name:'Arial',bold:true,size:12};names.views=[{state:'frozen',ySplit:2}];names.autoFilter={from:'A2',to:(rev.source==='diseno_lote'?'L':'J')+Math.max(2,names.rowCount)};
     }
     for(const table of d.extraTables||[]){
       const extra=wb.addWorksheet(table.title.slice(0,31));extra.addRow(['Proway',rev.name]);extra.addRow(table.heads);
@@ -380,9 +380,9 @@
           designs.addImage(mark,{tl:{col:0,row},ext:{width:img.width*scale,height:img.height*scale}});row+=25;
         }
       }
-      designs.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
+      designs.pageSetup={paperSize:1,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0};
     }
-    if(['etiquetas','etiquetas_lote','corte','diseno_lote'].includes(rev.source))for(const page of wb.worksheets)page.pageSetup={...page.pageSetup,paperSize:1,orientation:rev.source==='corte'?'landscape':page.pageSetup.orientation,fitToPage:true,fitToWidth:1,fitToHeight:0};
+    for(const page of wb.worksheets)page.pageSetup={...page.pageSetup,paperSize:1,orientation:rev.source==='corte'?'landscape':page.pageSetup.orientation,fitToPage:true,fitToWidth:1,fitToHeight:0};
     const buffer=await wb.xlsx.writeBuffer();return new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
   async function blankCustomerTemplate(){

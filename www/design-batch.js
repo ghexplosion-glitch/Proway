@@ -22,18 +22,18 @@
   function snapshot(state){return selection(state).map(o=>({
     id:o.id,name:o.name,status:status(o),images:{...o.images},
     additionalDesigns:structuredClone(o.additionalDesigns||[]),
-    data:{heads:[...heads],rows:o.rows.map(r=>[r.product,r.size,r.cut,r.qty,r.printed||'',r.color||'',r.design||'',r.placement||'']),money:[]}
+    data:{heads:[...heads],rows:ProwayPresentation.sorted(o.rows).map(r=>[r.product,r.size,r.cut,r.qty,r.printed||'',r.color||'',r.design||'',r.placement||'']),money:[]}
   }));}
   function batchName(state){const list=selection(state);return list.length?list.map(o=>o.name).join(' + ').slice(0,200):'Seleccionar pedidos';}
   function documentData(state){
     const list=selection(state),groups=new Map();
     for(const o of list)for(const r of o.rows){const key=JSON.stringify([r.product,r.size,r.cut]);if(!groups.has(key))groups.set(key,[r.product,r.size,r.cut,0]);groups.get(key)[3]+=r.qty;}
-    return {heads:['Folio','Cliente',...heads,'Validación'],rows:list.flatMap(o=>o.rows.map(r=>[o.id,o.name,r.product,r.size,r.cut,r.qty,r.printed||'',r.color||'',r.design||'',r.placement||'',status(o)])),money:[],paperSize:'letter',
+    return ProwayPresentation.withNumbers({heads:['Folio','Cliente',...heads,'Validación'],rows:list.flatMap(o=>ProwayPresentation.sorted(o.rows).map(r=>[o.id,o.name,r.product,r.size,r.cut,r.qty,r.printed||'',r.color||'',r.design||'',r.placement||'',status(o)])),money:[],paperSize:'letter',
       summary:[['Pedidos seleccionados',String(list.length)],['Prendas',String(list.reduce((n,o)=>n+quantity(o),0))]],
-      extraTables:[{title:'Pedidos incluidos',heads:['Folio','Cliente','Prendas','Validación'],rows:list.map(o=>[o.id,o.name,quantity(o),status(o)]),money:[]},{title:'Conteo por talla y corte',heads:['Producto','Talla','Corte','Cantidad'],rows:[...groups.values()],money:[]}]
-    };
+      extraTables:[{title:'Pedidos incluidos',heads:['Folio','Cliente','Prendas','Validación'],rows:list.map(o=>[o.id,o.name,quantity(o),status(o)]),money:[]},{title:'Conteo por talla y corte',heads:['Producto','Talla','Corte','Cantidad'],rows:[...groups.values()].sort((a,b)=>ProwayPresentation.compareSizes(a[1],b[1])),money:[]}]
+    });
   }
-  function preview(list,renderTable,renderArt,interactive=false){return list.map(o=>'<details class="pia-design-batch-order" open data-design-batch-preview="'+esc(o.id)+'"><summary>'+esc(o.name)+' · '+o.data.rows.reduce((n,r)=>n+r[3],0)+' prendas</summary><p class="pia-help">'+esc(o.id)+'<br>'+esc(o.status)+'</p>'+renderArt(o)+'<small>Desliza la tabla para ver nombres, colores, diseños e indicaciones.</small>'+renderTable(o.data,10000)+(interactive?'<button type="button" class="pia-secondary-button" data-open-job="'+esc(o.id)+'" data-open-area="taller" data-open-dept="diseño">Abrir este pedido en Diseño</button>':'')+'</details>').join('');}
+  function preview(list,renderTable,renderArt,interactive=false){return list.map(o=>'<details class="pia-design-batch-order" open data-design-batch-preview="'+esc(o.id)+'"><summary>'+esc(o.name)+' · '+o.data.rows.reduce((n,r)=>n+r[3],0)+' prendas</summary><p class="pia-help">'+esc(o.id)+'<br>'+esc(o.status)+'</p>'+renderArt(o)+'<small>Desliza la tabla para ver nombres, colores, diseños e indicaciones.</small>'+renderTable(ProwayPresentation.withNumbers(o.data),10000)+(interactive?'<button type="button" class="pia-secondary-button" data-open-job="'+esc(o.id)+'" data-open-area="taller" data-open-dept="diseño">Abrir este pedido en Diseño</button>':'')+'</details>').join('');}
   function screen(state,renderTable,renderArt){
     const list=selection(state),total=list.reduce((n,o)=>n+quantity(o),0),eligible=state.orders.filter(available),disabled=list.length?'':'disabled';
     return '<section class="pia-panel pia-design-batch"><h3>Diseño de varios pedidos</h3><p>1. Selecciona los pedidos. 2. Revisa prendas e imágenes. 3. Descarga un solo archivo para Diseño.</p><small>La impresión se libera en cada pedido después de sus validaciones. Los entregados, cerrados, cancelados y descartados salen de este listado.</small><div class="pia-batch-actions"><button type="button" data-design-batch-action="all">Seleccionar todos</button><button type="button" data-design-batch-action="pending">Solo diseño pendiente</button><button type="button" data-design-batch-action="none">Quitar selección</button></div><details open><summary>Pedidos disponibles · '+eligible.length+'</summary>'+
