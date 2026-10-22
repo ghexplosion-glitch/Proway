@@ -87,7 +87,15 @@
     meta.events=snapshot.events;meta.lastSynced=new Date().toISOString();
     const state=C.stateFrom(current,meta);meta=C.prepare(meta,state,uuid);await persist(state);
   }
-  async function sync(force=false){
+  let syncTask=null;
+  // A manual synchronization must await the automatic online/upload pass too.
+  // Run once more afterwards so edits queued during that pass are included.
+  function sync(force=false){
+    if(syncTask)return force?syncTask.then(()=>sync(true)):syncTask;
+    const task=runSync(force).finally(()=>{if(syncTask===task)syncTask=null;});
+    syncTask=task;return task;
+  }
+  async function runSync(force=false){
     if(!meta||busy||!navigator.onLine||locked)return;
     if(bridge.isBusy?.()){schedule();return;}
     const focused=document.activeElement;if(!force&&document.querySelector('#pia-main')?.contains(focused)&&focused.matches('input:not([type=checkbox]),textarea')){schedule();return;}

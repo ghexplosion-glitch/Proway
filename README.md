@@ -236,3 +236,5 @@ En **Pedido → Diseños del pedido → Seleccionar prendas y asignar diseño**,
 **Pedido → Opciones del pedido → Eliminar pedido** retira un pedido sin cobros, egresos ni producción iniciada. Muestra cliente y folio, pide confirmación y guarda un punto de recuperación. El expediente persiste como descartado, se sincroniza y se recupera desde Historial → Descartadas. Los pedidos con movimientos usan Cancelar pedido en el mismo menú y mantienen su contabilidad. No hay borrado físico ni cambios en el esquema local. La migración `backend/proway-order-designs.sql` solo amplía la validación de imágenes nombradas; conserva permisos y registros.
 
 Los accesos **Asignar diseños** y **Opciones del pedido** al inicio de Pedido abren directamente el panel correspondiente, aunque la lista de personas sea larga. Desde Cobro, **Asignar diseños a varias prendas** regresa al mismo editor.
+
+La sincronización manual espera a la subida automática que esté en curso y después revisa los cambios nuevos. Así, al recuperar la conexión durante una carga de imágenes, el segundo dispositivo recibe el diseño y sus prendas antes de dar por terminada la sincronización manual.
