@@ -36,4 +36,14 @@ assert.equal(discarded.guards.advanceRecord,null,'Discard checks a concurrent ad
 assert.equal(C.guardsFor({released:true},order).quoteStatus,null,'Production cannot progress after a concurrent quote discard');
 assert.equal(C.guardsFor({released:true},order).shippingQuote,null,'Production checks the quotation shipping charge');
 assert.deepEqual(C.guardsFor({plannedCosts:{fabric:100}},order),{},'Internal forecast costs do not reset production or payment approvals');
-console.log('Synchronization rules: 26 checks passed');
+const legacyDesignBase={id:'LEGACY',rows:[{id:1,qty:1}],images:{front:null,back:null}};
+const legacyDesignLocal=C.normalizeOrder(legacyDesignBase);
+const namedDesignRemote={...legacyDesignBase,additionalDesigns:[{id:'D-named',name:'Modelo compartido',images:{front:'embedded-image',back:null}}]};
+assert.deepEqual(C.rebase(legacyDesignLocal,legacyDesignBase,namedDesignRemote).additionalDesigns,namedDesignRemote.additionalDesigns,'A normalized empty legacy list never hides a remotely added design');
+assert.deepEqual(C.rebase({...namedDesignRemote,additionalDesigns:[]},namedDesignRemote,namedDesignRemote).additionalDesigns,[],'An explicit removal of previously saved artwork remains a real local edit');
+assert.equal(C.rebase(legacyDesignLocal,legacyDesignBase,{...legacyDesignBase,plannedCosts:{fabric:100,sewing:0,shipping:0,other:0}}).plannedCosts.fabric,100,'Normalized cost defaults never overwrite a remote forecast');
+const localNamedDesign={...legacyDesignLocal,additionalDesigns:[{id:'D-local',name:'Offline',images:{front:'offline-image',back:null}}]};
+const separateRemoteEdit={...legacyDesignBase,rows:[{id:1,qty:2}]};
+const combinedLegacyEdit=C.rebase(localNamedDesign,legacyDesignBase,separateRemoteEdit);
+assert(combinedLegacyEdit.rows[0].qty===2&&combinedLegacyEdit.additionalDesigns[0].id==='D-local','A real offline design survives alongside a separate remote garment edit');
+console.log('Synchronization rules: 30 checks passed');

@@ -43,7 +43,12 @@
   }
   function rebase(current,comparison,remote){
     if(!current)return clone(remote);const result=clone(remote);
-    for(const k of Object.keys(current))if(!equal(current[k],comparison?.[k])&&!equal(current[k],remote[k]))result[k]=clone(current[k]);
+    // Normalized legacy defaults are not local edits. A remote named design
+    // must replace the empty list introduced only by normalizeOrder().
+    for(const k of Object.keys(current)){
+      const baseline=k==='additionalDesigns'?(comparison?.[k]??[]):Object.hasOwn(orderDefaults,k)?(comparison?.[k]??orderDefaults[k]):comparison?.[k];
+      if(!equal(current[k],baseline)&&!equal(current[k],remote[k]))result[k]=clone(current[k]);
+    }
     return result;
   }
   function stateFrom(baseState,meta){

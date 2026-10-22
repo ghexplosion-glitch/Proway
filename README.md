@@ -238,3 +238,5 @@ En **Pedido → Diseños del pedido → Seleccionar prendas y asignar diseño**,
 Los accesos **Asignar diseños** y **Opciones del pedido** al inicio de Pedido abren directamente el panel correspondiente, aunque la lista de personas sea larga. Desde Cobro, **Asignar diseños a varias prendas** regresa al mismo editor.
 
 La sincronización manual espera a la subida automática que esté en curso y después revisa los cambios nuevos. Así, al recuperar la conexión durante una carga de imágenes, el segundo dispositivo recibe el diseño y sus prendas antes de dar por terminada la sincronización manual.
+
+La comparación de sincronización distingue los campos opcionales normalizados de una edición real: una lista `additionalDesigns: []` añadida al abrir un pedido antiguo ya no oculta imágenes nuevas recibidas desde otro dispositivo. Las eliminaciones explícitas de diseños sí se conservan.
