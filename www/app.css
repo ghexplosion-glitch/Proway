@@ -490,3 +490,6 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
  #pia-offline-app .pia-batch-actions{display:flex;flex-wrap:wrap;gap:10px}
  #pia-offline-app .pia-batch-actions>button{flex:1 1 180px;width:auto;margin:0}
 }
+#pia-offline-app .pia-art-library>.pia-primary-design,#pia-offline-app .pia-art-library>.pia-order-design{scroll-margin-top:85px}
+#pia-offline-app .pia-chosen-design{flex-wrap:wrap}
+#pia-offline-app .pia-chosen-design [data-order-design-action=edit]{flex-basis:100%;width:100%;margin:0;min-height:44px}
