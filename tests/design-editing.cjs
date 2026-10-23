@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),E=require('../www/design-editor.js'),P=require('../www/presentation-order.js');
+const checks=[],ok=(name,value)=>{assert(value,name);checks.push(name);};
+const r={id:'C1',images:{front:'FRONT',back:'BACK'},additionalDesigns:[{id:'D-2',name:'OTRO',images:{front:'F2',back:'B2'}}],rows:[{id:1,design:'',printed:'Ana · #00',special:800,qty:2},{id:2,design:'Diseño principal',printed:'Luis · #01',special:750,qty:1},{id:3,design:'OTRO',printed:'María · #09',special:900,qty:1}]};
+const original=JSON.stringify(r),request={source:E.source(r),designId:'primary'};
+let result=E.plan(r,{...request,action:'rename-primary',name:'EQUIPO ROJO',newId:'D-3'});
+ok('Naming primary moves both images and links every former primary garment',result.images.front===null&&result.additionalDesigns[1].images.back==='BACK'&&result.rows.slice(0,2).every(x=>x.design==='EQUIPO ROJO')&&result.rows[2].design==='OTRO');
+ok('Naming preserves IDs physical counts printed zeros and individual prices',result.rows.every((x,i)=>['id','printed','special','qty'].every(k=>x[k]===r.rows[i][k])));
+result=E.plan(r,{...request,action:'clear-image',side:'front'});ok('Clear front preserves back row links and all named models',result.images.front===null&&result.images.back==='BACK'&&JSON.stringify(result.rows)===JSON.stringify(r.rows)&&result.additionalDesigns[0].images.front==='F2');
+result=E.plan(r,{...request,designId:'D-2',action:'clear-images'});ok('Clear both images preserves model name and assignment',result.additionalDesigns[0].name==='OTRO'&&Object.values(result.additionalDesigns[0].images).every(x=>x===null)&&result.rows[2].design==='OTRO');
+result=E.plan(r,{...request,designId:'D-2',action:'remove'});ok('Deleting an assigned model marks only its rows Sin diseño',result.additionalDesigns.length===0&&result.rows[2].design==='Sin diseño'&&result.rows[0].design===''&&result.images.front==='FRONT');
+result=E.plan(r,{...request,action:'remove'});ok('Deleting primary affects its two rows and preserves the other model',result.rows.slice(0,2).every(x=>x.design==='Sin diseño')&&result.rows[2].design==='OTRO'&&result.additionalDesigns.length===1);
+for(const name of ['OTRO','otro','Sin diseño',''])ok('Invalid or duplicate primary name is rejected: '+JSON.stringify(name),assert.throws(()=>E.plan(r,{...request,action:'rename-primary',name,newId:'D-3'}))===undefined);
+ok('Stale artwork source cannot remove current data',assert.throws(()=>E.plan({...r,images:{front:'CHANGED',back:'BACK'}},{...request,action:'remove'}))===undefined);
+ok('No original data is mutated by any plan',JSON.stringify(r)===original);
+const rows=[{id:1,size:'M',cut:'Mujer',printed:'Ana'},{id:2,size:'M',cut:'Hombre',printed:'Luis'},{id:3,size:'M',cut:'Hombre',printed:'Alberto'},{id:4,size:'CH',cut:'Mujer',printed:'Zara'},{id:5,size:'M',cut:'Mujer',printed:'Bea'}];
+ok('Size then cut then person grouping is deterministic',P.sorted(rows,'size').map(x=>x.id).join(',')==='4,3,2,1,5');
+ok('Presentation grouping preserves original size and cut values',rows[0].id===1&&P.sorted(rows,'size').every(x=>x.cut===rows.find(r=>r.id===x.id).cut));
+console.log(JSON.stringify({passed:checks.length,area:'design-editing-core'}));

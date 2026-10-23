@@ -452,3 +452,41 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
   #pia-offline-app.pia-client-view{display:block;max-width:1100px;margin:auto}
 }
 @media(min-width:1600px){#pia-offline-app>#pia-main,#pia-offline-app>.pia-header,#pia-offline-app>.pia-order-picker,#pia-offline-app>.pia-installbar{padding-left:44px;padding-right:44px}#pia-offline-app .pia-art,#pia-offline-app .pia-work-content .pia-art{height:440px}}
+
+/* 1.15: short paths for order edits, compact artwork, stable scrolling lists. */
+#pia-offline-app .pia-order-shortcuts{position:sticky;top:0;z-index:9;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;background:#f6f8f7ee;padding:9px 0;margin:6px 0 14px;backdrop-filter:blur(12px)}
+#pia-offline-app .pia-order-shortcuts button{margin:0;padding:10px 5px;border:1px solid #c8ded1;border-radius:10px;background:white;color:#176940;font-size:12px;display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;overflow-wrap:anywhere}
+#pia-offline-app #pia-order-data,#pia-offline-app #pia-person-list,#pia-offline-app #pia-person-form,#pia-offline-app #pia-order-designs,#pia-offline-app #pia-design-selection,#pia-offline-app #pia-order-options{scroll-margin-top:80px}
+#pia-offline-app .pia-person-list{max-height:440px;overflow:auto;overscroll-behavior:contain;padding-right:3px;scrollbar-gutter:stable}
+#pia-offline-app .pia-person-save-actions{position:sticky;bottom:86px;z-index:7;background:#f6f8f7f5;border-top:1px solid #dbe5de;padding:10px 0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#pia-offline-app .pia-person-save-actions button{width:100%;margin:0}
+#pia-offline-app .pia-art-library{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;max-height:580px;overflow:auto;overscroll-behavior:contain;padding:6px 5px 12px;scrollbar-gutter:stable}
+#pia-offline-app .pia-art-library>.pia-primary-design,#pia-offline-app .pia-art-library>.pia-order-design{min-width:0;padding:12px;border:1px solid #dbe5de;border-radius:12px;background:#fff;margin:0}
+#pia-offline-app .pia-art-library .pia-art,#pia-offline-app .pia-work-content .pia-art-library .pia-art{height:145px}
+#pia-offline-app .pia-art-library .pia-art-grid,#pia-offline-app .pia-work-content .pia-art-library .pia-art-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#pia-offline-app .pia-art-library input[type=file]{width:100%;max-width:100%;box-sizing:border-box;font-size:11px}
+#pia-offline-app .pia-art-library>.pia-secondary-button,#pia-offline-app .pia-art-library>small{grid-column:1/-1}
+#pia-offline-app .pia-design-edit-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0;min-width:0}
+#pia-offline-app .pia-design-edit-actions button,#pia-offline-app .pia-clear-image{margin:0;min-height:44px;width:100%;padding:9px 6px;border:1px solid #c8ded1;background:#fff;color:#176940;border-radius:8px;font-size:12px;white-space:normal;overflow-wrap:anywhere;box-sizing:border-box}
+#pia-offline-app .pia-design-edit-actions .pia-primary{background:#176940;color:#fff}
+#pia-offline-app .pia-clear-image{margin-top:6px}
+#pia-offline-app .pia-assignment-toolbar{position:sticky;top:65px;z-index:6;background:#eff8f2f5;border:1px solid #c8ded1;border-radius:12px;padding:12px;margin:10px 0 12px}
+#pia-offline-app .pia-assignment-toolbar #pia-design-selected{margin:7px 0;font-size:12px}
+#pia-offline-app .pia-assignment-toolbar .pia-design-edit-actions{margin-bottom:0}
+#pia-offline-app .pia-assignment-toolbar [data-order-design-action=apply-visible]{grid-column:1/-1}
+#pia-offline-app .pia-design-rows{max-height:340px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+#pia-offline-app .pia-chosen-design{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #e1e9e4;border-radius:10px;margin:12px 0;min-width:0}
+#pia-offline-app .pia-chosen-design>strong{flex:1;min-width:0;font-size:13px;overflow-wrap:anywhere}
+#pia-offline-app .pia-chosen-design .pia-art-grid{width:130px;flex-shrink:0;gap:6px;margin:0;grid-template-columns:repeat(2,minmax(0,1fr))}
+#pia-offline-app .pia-chosen-design .pia-art,#pia-offline-app .pia-work-content .pia-chosen-design .pia-art{height:70px}
+#pia-offline-app .pia-chosen-design small{font-size:10px}
+@media(min-width:1000px){
+ #pia-offline-app .pia-art-library{grid-template-columns:repeat(2,minmax(0,1fr));max-height:520px}
+ #pia-offline-app .pia-art-library .pia-art,#pia-offline-app .pia-work-content .pia-art-library .pia-art{height:180px}
+ #pia-offline-app .pia-order-shortcuts{grid-template-columns:repeat(4,minmax(100px,180px));justify-content:start}
+ #pia-offline-app .pia-person-save-actions{bottom:12px;max-width:700px}
+ #pia-offline-app .pia-assignment-toolbar .pia-design-edit-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #pia-offline-app .pia-assignment-toolbar [data-order-design-action=apply-visible]{grid-column:auto}
+ #pia-offline-app .pia-batch-actions{display:flex;flex-wrap:wrap;gap:10px}
+ #pia-offline-app .pia-batch-actions>button{flex:1 1 180px;width:auto;margin:0}
+}

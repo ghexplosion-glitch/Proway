@@ -1,4 +1,11 @@
-# Proway Pedidos 1.14.0
+# Proway Pedidos 1.15.0
+
+La versión 1.15.0 simplifica **Pedido** con accesos fijos a Datos, Personas, Diseños y Opciones. Personas abre directamente el buscador de guardadas; el listado tiene desplazamiento propio y regresa al resultado buscado después de guardar. Los botones Guardar y Cancelar permanecen accesibles en el formulario. Las listas y bibliotecas conservan su posición al seleccionar prendas.
+
+**Diseños** ofrece vistas compactas de frente y espalda y nombres editables, incluido el principal. El principal nombrado pasa a un modelo del pedido utilizando los campos existentes; conserva sus imágenes y vínculos. Se mantienen hasta 9 diseños por pedido; si los 9 espacios están ocupados, hay que retirar uno para nombrar el principal. La asignación reúne destino y acciones arriba: marcar prendas y asignar, o filtrar por producto/talla/corte y aplicar directamente a todas las visibles. Quitar diseño de seleccionadas las marca explícitamente **Sin diseño**. Cada imagen tiene Quitar frente/espalda; Limpiar imágenes conserva nombre y vínculos; Eliminar diseño retira imágenes y deja sus prendas Sin diseño, con revisión antes de retirar un modelo asignado. Esos cambios guardan primero un punto de recuperación y respetan el permiso de cada departamento. Una prenda Sin diseño bloquea su aprobación. No cambian cantidades, precios ni cobros.
+
+Las nuevas **vistas previas, PDF y Excel** usan siempre talla de menor a mayor → Hombre/Mujer → persona dentro de cada pedido. La preferencia Persona de la captura solo facilita editar: no cambia el orden de impresión. Los documentos ya emitidos conservan su orden original. Todas las impresiones mantienen tamaño Carta. No se cambia la versión de la base ni se agregan pedidos de demostración.
+
 
 La versión 1.14.0 aprovecha el ancho de la computadora con la navegación principal a la izquierda, conserva la barra inferior en el celular y permite ampliar imágenes tocándolas (Cerrar o Escape para volver).
 

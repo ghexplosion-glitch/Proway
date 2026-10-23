@@ -6,11 +6,12 @@
   const aliases={XS:'XCH',S:'CH',SM:'CH',L:'G',XL:'XG',XXL:'XXG','2XL':'XXG','2XG':'XXG','3XL':'XXXG','3XG':'XXXG','4XL':'4XG','5XL':'5XG','6XL':'6XG'};
   function sizeKey(value){let s=String(value??'').trim().toUpperCase().replace(/^TALLA\s*/,'').replace(/\s+/g,'');s=aliases[s]||s;if(/^\d+(\.\d+)?$/.test(s))return [0,Number(s),''];const n=names.indexOf(s);if(n>=0)return [1,n,''];if(s==='AMEDIDA'||!s)return [3,0,s];return [2,0,s];}
   function compareSizes(a,b){const x=sizeKey(a),y=sizeKey(b);return x[0]-y[0]||x[1]-y[1]||collator.compare(x[2],y[2]);}
+  function cutKey(value){return value==='Hombre'?0:value==='Mujer'?1:2;}
   function person(row){return String(row.person||row.printed||'Sin nombre').trim();}
   function sorted(rows,mode=orderMode){
     return rows.map((row,index)=>({row,index})).sort((a,b)=>{
-      const bySize=compareSizes(a.row.size,b.row.size),byPerson=collator.compare(person(a.row),person(b.row));
-      return (mode==='person'?byPerson||bySize:bySize||byPerson)||collator.compare(a.row.product,b.row.product)||a.index-b.index;
+      const bySize=compareSizes(a.row.size,b.row.size),byCut=cutKey(a.row.cut)-cutKey(b.row.cut),byPerson=collator.compare(person(a.row),person(b.row));
+      return (mode==='person'?byPerson||bySize||byCut:bySize||byCut||byPerson)||collator.compare(a.row.product,b.row.product)||a.index-b.index;
     }).map(x=>({...x.row}));
   }
   function numbered(rows,mode=orderMode){return sorted(rows,mode).map((row,index)=>({...row,lineNo:index+1}));}
@@ -19,7 +20,7 @@
   }
   let orderMode='size',app;
   try{orderMode=localStorage.getItem('proway-list-order')==='person'?'person':'size';}catch{}
-  function control(){return '<div class="pia-order-control"><label>Orden de listados<select id="pia-list-order"><option value="size" '+(orderMode==='size'?'selected':'')+'>Talla → Persona</option><option value="person" '+(orderMode==='person'?'selected':'')+'>Persona → Talla</option></select></label><small>N.º es el consecutivo del listado. El número impreso se conserva.</small></div>';}
+  function control(){return '<div class="pia-order-control"><label>Vista de captura<select id="pia-list-order"><option value="size" '+(orderMode==='size'?'selected':'')+'>Talla → Corte → Persona</option><option value="person" '+(orderMode==='person'?'selected':'')+'>Persona → Talla → Corte</option></select></label><small>PDF, Excel y vistas previas: talla → Hombre / Mujer → persona. N.º es el consecutivo; tu número impreso se conserva.</small></div>';}
   function withNumbers(data){return {...data,heads:['N.º',...data.heads],rows:data.rows.map((row,i)=>[i+1,...row]),money:(data.money||[]).map(i=>i+1)};}
   function bind(bridge){app=bridge;document.getElementById('proway-pedidos-preview').addEventListener('change',e=>{if(e.target.id!=='pia-list-order')return;orderMode=e.target.value==='person'?'person':'size';try{localStorage.setItem('proway-list-order',orderMode);}catch{}app.repaint();});
     // One accessible image viewer works for every department and the client quote.
@@ -27,5 +28,5 @@
     document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('.pia-art img,.pia-design-card img')){e.preventDefault();e.target.click();}});
   }
   function images(){document.querySelectorAll('.pia-art img,.pia-design-card img').forEach(img=>{img.tabIndex=0;img.setAttribute('role','button');img.setAttribute('aria-label','Ampliar '+img.alt);});}
-  return {control,withNumbers,bind,images,getMode:()=>orderMode,sizeKey,compareSizes,sorted,numbered,pieces,person};
+  return {control,withNumbers,bind,images,cutKey,getMode:()=>orderMode,sizeKey,compareSizes,sorted,numbered,pieces,person};
 });

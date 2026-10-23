@@ -13,7 +13,7 @@
   function labelDocument(state){
     const orders=selection(state),rows=[];let total=orders.reduce((n,o)=>n+quantity(o),0);
     // Large orders remain available; one download contains at most 10,000 labels.
-    if(total<=10000)for(const o of orders){let piece=0;const count=quantity(o);for(const r of ProwayPresentation.sorted(o.rows))for(let i=0;i<r.qty;i++)rows.push([++piece,r.product,r.size,r.cut,o.name,r.printed||'',r.color||'',r.design||'',o.id,count]);}
+    if(total<=10000)for(const o of orders){let piece=0;const count=quantity(o);for(const r of ProwayPresentation.sorted(o.rows,'size'))for(let i=0;i<r.qty;i++)rows.push([++piece,r.product,r.size,r.cut,o.name,r.printed||'',r.color||'',r.design||'',o.id,count]);}
     return {heads:['Pieza','Producto','Talla','Corte','Cliente','Nombre','Color','Diseño','Folio','Prendas del pedido'],rows,money:[],labelOffset:offset,paperSize:'letter',
       summary:[['Pedidos seleccionados',String(orders.length)],['Etiquetas',String(total)],['Primera posición libre',String(offset+1)],['Etiquetas por hoja Carta',String(pageSize)],['Hojas necesarias',String(total?Math.ceil((offset+total)/pageSize):0)],...(total>10000?[['Revisión','Selecciona hasta 10,000 etiquetas por descarga.']]:[])],
       extraTables:[{title:'Pedidos para etiquetar',heads:['Folio','Cliente','Prendas'],rows:orders.map(o=>[o.id,o.name,quantity(o)]),money:[]}]};
