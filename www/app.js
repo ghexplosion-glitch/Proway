@@ -259,7 +259,7 @@
     if(!utility&&!privateView&&['pedido','cobro','taller','tablas'].includes(screen)&&!isClosed(o())){const control=document.createElement('div');control.innerHTML=ProwayPresentation.control();main.querySelector('h2')?.insertAdjacentElement('afterend',control.firstElementChild);}
     for(const el of main.querySelectorAll('[data-scroll-key]')){const pos=scrollPositions.get(el.dataset.scrollKey);if(pos){el.scrollTop=pos[0];el.scrollLeft=pos[1];}}
     ProwayPresentation.images();
-    if(same)main.querySelectorAll('details').forEach(d=>{if(expanded.has(detailKey(d)))d.open=true;});
+    if(same)main.querySelectorAll('details').forEach(d=>{if(d.id!=='pia-person-editor'&&expanded.has(detailKey(d)))d.open=true;});
     if(!utility&&!privateView&&screen!=='inicio'&&!(screen==='dinero'&&moneyTab==='cortes'&&!ProwayCuts.valid(serializeState()))&&!((isClosed(o())||['discarded','cancelled'].includes(o().quoteStatus))&&['pedido','cobro','taller'].includes(screen)))main.insertAdjacentHTML('beforeend',sectionTools());
     root.querySelectorAll('[data-screen]').forEach(b=>{if(b.dataset.screen===screen)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
     root.querySelectorAll('button,summary,select').forEach(x=>x.classList.add('cursor-interaction'));

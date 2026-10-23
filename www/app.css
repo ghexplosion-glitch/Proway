@@ -493,3 +493,17 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 #pia-offline-app .pia-art-library>.pia-primary-design,#pia-offline-app .pia-art-library>.pia-order-design{scroll-margin-top:85px}
 #pia-offline-app .pia-chosen-design{flex-wrap:wrap}
 #pia-offline-app .pia-chosen-design [data-order-design-action=edit]{flex-basis:100%;width:100%;margin:0;min-height:44px}
+
+/* 1.15.1: one page gesture on phones, without nested vertical scroll traps. */
+@media(max-width:999px){
+ #pia-offline-app .pia-person-list,#pia-offline-app .pia-art-library,#pia-offline-app .pia-design-rows{max-height:none;overflow:visible;overscroll-behavior:auto;scrollbar-gutter:auto}
+ #pia-offline-app .pia-assignment-toolbar,#pia-offline-app .pia-person-save-actions{position:static}
+ #pia-offline-app button,#pia-offline-app summary{min-height:48px}
+ #pia-offline-app .pia-person-order .pia-fields{gap:16px 12px}
+ #pia-offline-app .pia-person-order .pia-batch-actions{gap:12px}
+ #pia-offline-app .pia-person-item{margin-block:18px}
+ #pia-offline-app .pia-person-order input,#pia-offline-app .pia-person-order select,#pia-offline-app .pia-person-order textarea{font-size:16px}
+}
+@media(max-width:999px) and (max-height:620px){
+ #pia-offline-app .pia-order-shortcuts{position:static}
+}

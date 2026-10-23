@@ -7,7 +7,7 @@ const checks=[],ok=(name,value)=>{assert(value,name);checks.push(name);};
   browser=await chromium.launch({headless:true,executablePath:process.env.PROWAY_CHROME});const context=await browser.newContext({viewport:{width:390,height:1050},acceptDownloads:true}),page=await context.newPage(),errors=[],cloud=[];
   await context.route('https://*.supabase.co/**',route=>{cloud.push(route.request().url());return route.abort();});page.on('pageerror',e=>errors.push(e.message));await page.goto('http://localhost:'+port);await page.locator('[data-action="new-order"]').waitFor();
   const saved=async()=>{await page.evaluate(()=>ProwayPlatform.flush());return page.evaluate(()=>ProwayPlatform.readAux('current').then(x=>x.state));};
-  const open=async()=>{if(!await page.locator('#pia-person-order').evaluate(e=>e.open))await page.locator('#pia-person-order>summary').click();await page.locator('[data-person-action="new"]').click();};
+  const open=async()=>{if(!await page.locator('#pia-person-order').evaluate(e=>e.open))await page.locator('#pia-person-order>summary').click();if(!await page.locator('#pia-person-editor').evaluate(e=>e.open))await page.locator('[data-person-action="new"]').click();};
   const shared=async(key,value)=>{await page.locator('#pia-person-'+key).fill(value);};
   const item=n=>page.locator('[data-person-item]').nth(n),input=(n,field)=>item(n).locator('[data-person-item-field="'+field+'"]');
   const commit=async()=>{await page.locator('#pia-person-form button[type="submit"]').click();await page.waitForFunction(()=>!document.getElementById('pia-feedback').hidden&&document.getElementById('pia-feedback').textContent.includes(' agregado: '));};
