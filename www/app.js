@@ -120,7 +120,7 @@
     const before=structuredClone(r);busyTasks++;
     try{await ProwayPlatform.checkpoint('Antes de renombrar '+r.name);if(!allowed()||!ProwaySyncCore.equal(before,r))throw Error('El pedido cambió mientras se guardaba el respaldo. Revisa de nuevo su nombre.');
       r.name=name;record('Nombre del pedido actualizado: '+name,'pedido',r);render();return {name,changed:true};
-    }finally{busyTasks--;const button=root.querySelector('#pia-rename-order');if(button)button.disabled=busyTasks>0;}
+    }finally{busyTasks--;}
   }
   function payerField(r=o()){return '<div class="pia-field"><label for="pia-payer-type">Tipo fiscal del cliente</label><select id="pia-payer-type">'+Object.entries(payerTypes).map(([k,v])=>'<option value="'+k+'" '+(r.payerType===k?'selected':'')+'>'+v+'</option>').join('')+'</select></div>'+note(r.payerType==='pending'?'Confirma quién pagará. El nombre del equipo no determina su tipo fiscal.':r.payerType==='PM'?'Cliente persona moral: retención ISR 1.25% sobre el subtotal sin IVA.':'Cliente persona física: sin retención ISR del artículo 113-J.');}
   function fiscalForm(){const f=o().fiscal;return '<details class="pia-panel"><summary>Datos para facturación · opcional</summary><div class="pia-fields">'+field('RFC del cliente','pia-fiscal-rfc',f.rfc)+field('Código postal fiscal','pia-fiscal-cp',f.cp,'text','inputmode="numeric" maxlength="5"')+'<div class="pia-full">'+field('Nombre o razón social','pia-fiscal-name',f.name)+'</div>'+field('Régimen fiscal','pia-fiscal-regime',f.regime,'text','placeholder="Clave y descripción"')+field('Uso CFDI','pia-fiscal-use',f.use,'text','placeholder="Pendiente"')+field('Forma de pago','pia-fiscal-form',f.form,'text','placeholder="Ej. 03 · transferencia"')+field('Método de pago','pia-fiscal-method',f.method,'text','placeholder="PUE o PPD según corresponda"')+'</div><small style="margin-top:10px">Emisor Proway: RESICO persona física · 626. La proforma no está timbrada.</small></details>';}
@@ -513,7 +513,7 @@
   function applyPermissions(){
     root.querySelectorAll('.pia-nav [data-screen]').forEach(b=>b.hidden=!isAdmin()&&['cobro','tablas','dinero'].includes(b.dataset.screen));
     root.querySelector('.pia-nav').classList.toggle('pia-department-nav',!isAdmin());
-    const rename=root.querySelector('#pia-rename-order');if(rename){rename.hidden=!canEditOrder()||clientView||clientQuote||!!utility||picker.disabled;rename.disabled=busyTasks>0;}
+    const rename=root.querySelector('#pia-rename-order');if(rename){rename.hidden=!canEditOrder()||clientView||clientQuote||!!utility||picker.disabled;rename.disabled=false;}
     if(!isAdmin()){main.querySelectorAll('button').forEach(b=>{if(!allowedClick(b))b.disabled=true;});main.querySelectorAll('input,textarea,select').forEach(x=>{if(!allowedChange(x))x.disabled=true;});}
     main.hidden=collaborationLocked;picker.parentElement.hidden=collaborationLocked;root.querySelector('.pia-nav').hidden=collaborationLocked;
   }
