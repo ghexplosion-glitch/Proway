@@ -69,7 +69,7 @@
     root.addEventListener('click',e=>{
       const b=e.target.closest('[data-person-action],[data-person-edit]');if(!b||b.disabled||saving)return;
       const state=app.getState(),key=draftKey(state.profile.id,state.activeOrderId),order=state.orders.find(o=>o.id===state.activeOrderId);let draft=readForm(root.querySelector('#pia-person-form'))||draftFor(state);
-      if(b.dataset.personEdit){const group=groups(order).find(g=>g.key===b.dataset.personEdit);if(!group)return;draft=editDraft(state,group);drafts.set(key,draft);app.repaint();focusEditor(root);return;}
+      if(b.dataset.personEdit){const group=groups(order).find(g=>g.key===b.dataset.personEdit);if(!group)return;draft={...editDraft(state,group),search:draft.search};drafts.set(key,draft);app.repaint();focusEditor(root);return;}
       const action=b.dataset.personAction;
       if(action==='new'){if(draft.editing){draft=fresh(state);drafts.set(key,draft);}draft.editorOpen=true;app.repaint();focusEditor(root);return;}
       if(action==='cancel'){draft=fresh(state);drafts.set(key,draft);app.repaint();return;}
