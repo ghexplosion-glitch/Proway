@@ -1,7 +1,7 @@
 /* Use the same visible person editor as the customer; no legacy add-form shim. */
 async function beginSingle(page){
  const parent=page.locator('#pia-person-order');if(!await parent.evaluate(e=>e.open))await parent.locator(':scope > summary').click();
- await page.locator('[data-person-action="new"]').click();await page.locator('[data-person-action="single"]').click();
+ if(!await page.locator('#pia-person-editor').evaluate(e=>e.open))await page.locator('[data-person-action="new"]').click();await page.locator('[data-person-action="single"]').click();
 }
 async function addGarment(page,{product='Butarga',cut='Hombre',size='M',qty=1,name='PERSONA DE PRUEBA',color='',design='',notes=''}={}){
  await beginSingle(page);const first=page.locator('[data-person-item]').first();

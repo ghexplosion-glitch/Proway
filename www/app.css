@@ -498,7 +498,7 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 @media(max-width:999px){
  #pia-offline-app .pia-person-list,#pia-offline-app .pia-art-library,#pia-offline-app .pia-design-rows{max-height:none;overflow:visible;overscroll-behavior:auto;scrollbar-gutter:auto}
  #pia-offline-app .pia-assignment-toolbar,#pia-offline-app .pia-person-save-actions{position:static}
- #pia-offline-app button,#pia-offline-app summary{min-height:48px}
+ #pia-offline-app #pia-main button,#pia-offline-app #pia-main summary{min-height:48px}
  #pia-offline-app .pia-person-order .pia-fields{gap:16px 12px}
  #pia-offline-app .pia-person-order .pia-batch-actions{gap:12px}
  #pia-offline-app .pia-person-item{margin-block:18px}
