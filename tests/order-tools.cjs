@@ -2,9 +2,9 @@ const {chromium}=require('playwright'),{spawn}=require('node:child_process');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'test-results','order-tools');fs.mkdirSync(out,{recursive:true});
 const checks=[],ok=(name,value)=>{assert(value,name);checks.push(name);};
-(async()=>{const port=4414,server=spawn(process.execPath,['server.mjs'],{cwd:root,env:{...process.env,PORT:String(port)}});await new Promise(r=>server.stdout.once('data',r));let browser;
+(async()=>{const port=4414,server=spawn(process.execPath,['server.mjs'],{cwd:root,env:{...process.env,PORT:String(port)}});await new Promise(r=>server.stdout.once('data',r));let browser,page;
 try{
- browser=await chromium.launch({headless:true,executablePath:process.env.PROWAY_CHROME});const context=await browser.newContext({viewport:{width:390,height:920},hasTouch:true,isMobile:true,acceptDownloads:true}),page=await context.newPage(),errors=[],cloud=[];
+ browser=await chromium.launch({headless:true,executablePath:process.env.PROWAY_CHROME});const context=await browser.newContext({viewport:{width:390,height:920},hasTouch:true,isMobile:true,acceptDownloads:true}),errors=[],cloud=[];page=await context.newPage();
  page.on('pageerror',e=>errors.push(e.message));await context.route('https://*.supabase.co/**',r=>{cloud.push(r.request().url());return r.abort();});await page.goto('http://localhost:'+port);await page.locator('#pia-team').waitFor();
  const saved=async()=>{await page.evaluate(()=>ProwayPlatform.flush());return page.evaluate(()=>ProwayPlatform.readAux('current').then(x=>x.state));};
  const feedback=async text=>page.waitForFunction(t=>!document.getElementById('pia-feedback').hidden&&document.getElementById('pia-feedback').textContent.includes(t),text);
@@ -26,7 +26,7 @@ try{
  ok('The rename button is available again after saving',await page.locator('#pia-rename-order').isEnabled());
  const nameCheckpoints=await page.evaluate(()=>ProwayPlatform.listCheckpoints());ok('Renaming creates a recoverable checkpoint',nameCheckpoints.length>0);
  await page.locator('[data-screen="cobro"]').click();await page.locator('[data-action="preview-document"]').click();ok('New customer documents show the renamed order and hide internal rename controls',(await page.locator('.pia-quote-modern').innerText()).includes('ASIS TEMPORADA 2026')&&!await page.locator('#pia-rename-order').isVisible());await page.locator('[data-action="close-document"]').click();await page.locator('[data-screen="pedido"]').click();
- await page.locator('#pia-name').fill('ASIS NOMBRE CORREGIDO');await page.locator('#pia-name').dispatchEvent('change');await feedback('ASIS NOMBRE CORREGIDO');current=await saved();ok('The existing name field shares the safe rename behavior',current.orders[0].name==='ASIS NOMBRE CORREGIDO'&&JSON.stringify({...current.orders[0],name:original.name})===JSON.stringify(original));
+ await page.locator('#pia-name').fill('ASIS NOMBRE CORREGIDO');await page.locator('#pia-name').press('Tab');await page.waitForFunction(async()=>{await ProwayPlatform.flush();return (await ProwayPlatform.readAux('current')).state.orders[0].name==='ASIS NOMBRE CORREGIDO';});current=await saved();ok('The existing name field shares the safe rename behavior',current.orders[0].name==='ASIS NOMBRE CORREGIDO'&&JSON.stringify({...current.orders[0],name:original.name})===JSON.stringify(original));
  await page.locator('[data-action="assign-order-designs"]').click();await page.locator('[data-order-design-row="1"]').check();const beforePick=JSON.stringify((await saved()).orders);await page.locator('#pia-choose-batch-design').click();
  ok('The visual picker shows named front and back views',await modal().locator('.pia-visual-design-images img').count()===4&&await modal().getByAltText('ASIS AZUL · Frente').isVisible()&&await modal().getByAltText('ASIS AZUL · Espalda').isVisible());
  for(const width of [320,390,1440]){await page.setViewportSize({width,height:920});await page.screenshot({path:path.join(out,'design-picker-'+width+'.png')});ok('Visual design cards and Close fit viewport '+width,await modal().evaluate(e=>{const b=e.getBoundingClientRect(),c=e.querySelector('.pia-order-tools-body');return b.left>=0&&b.right<=innerWidth+1&&b.bottom<=innerHeight+1&&c.scrollWidth<=c.clientWidth+1&&e.querySelector('[data-order-tools-close]').getBoundingClientRect().width>=48;}));}
@@ -47,5 +47,5 @@ try{
  ok('The final backup validates with the existing schema',await page.evaluate(s=>{try{ProwayPlatform.validateState(s);return s.schemaVersion===1;}catch{return false;}},current));
  ok('Visual selection and renaming make no production backend calls or JavaScript errors',cloud.length===0&&errors.length===0);
  fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify({passed:checks.length,checks,errors},null,2));console.log(JSON.stringify({passed:checks.length,area:'order-tools',errors}));
-}finally{await browser?.close();server.kill();}
+}catch(e){const diagnostic={checks,error:e.message,feedback:await page?.locator('#pia-feedback').innerText().catch(()=>''),dialog:await page?.locator('.pia-order-tools-dialog').innerText().catch(()=>'')};fs.writeFileSync(path.join(out,'failure.json'),JSON.stringify(diagnostic,null,2));await page?.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});console.error('Order tools diagnostic:',JSON.stringify(diagnostic));throw e;}finally{await browser?.close();server.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
