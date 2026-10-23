@@ -1,4 +1,8 @@
-# Proway Pedidos 1.15.1
+# Proway Pedidos 1.16.0
+
+La versión 1.16.0 agrega **Elegir diseño con imágenes**: busca por nombre y toca una tarjeta con frente y espalda. El mismo selector se abre para grupos de prendas, una persona o un artículo. Elegir en la ventana modifica solo el formulario: guarda la persona o aplica la asignación por lote para confirmar. Se conserva la selección de prendas al elegir el modelo. Las imágenes pendientes se indican y Sin diseño permite retirar la asignación. Cargar o editar diseños abre la biblioteca del mismo pedido.
+
+**Editar nombre del pedido** aparece junto al pedido activo. Permite guardar o cancelar; conserva el mismo folio, prendas, precios, pagos, aprobaciones y fechas. Los nuevos documentos usan el nombre actualizado y las versiones ya emitidas conservan su contenido. El nombre admite 1 a 200 caracteres y se crea un punto de recuperación antes de cambiarlo. Si falla el respaldo o cambia el pedido, la edición no se aplica. El campo de nombre en Datos usa la misma validación. No se modifica la versión ni el formato de la base de datos.
 
 La versión 1.15.1 permite desplazarse en el celular con un solo movimiento de página: Personas, biblioteca de diseños y selección de prendas ya no atrapan el gesto dentro de listas pequeñas. Los controles de asignación y guardado quedan dentro del contenido y dejan libre la pantalla; los accesos a Datos, Personas, Diseños y Opciones se mantienen arriba y dejan de fijarse en pantallas de poca altura. Hay mayor separación entre campos y botones de al menos 48 px. En computadora las listas mantienen su desplazamiento interno.
 
