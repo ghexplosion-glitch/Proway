@@ -110,6 +110,40 @@
     '<details class="pia-panel" id="pia-order-designs" open><summary>Diseños del pedido · asignar y editar</summary>'+button('Ver prendas para asignar','assign-order-designs',false,'list-checks')+note('1. Carga y nombra el frente y la espalda. 2. Elige el diseño. 3. Marca varias prendas y aplícalo. Puedes repetirlo por cada grupo sin crear otro pedido.')+ProwayOrderDesigns.screen(serializeState())+'<h3>Biblioteca · nombres e imágenes</h3>'+orderArt(r,true)+note('Elige una imagen de tu galería. La misma se verá en todas las áreas.')+ProwayExtras.designPicker(designs)+'</details><details class="pia-panel"><summary>Conteo por talla y corte</summary>'+countTable(r)+'</details>'+
     (clientView?button('Guardar pedido','save',true,'check'):'<section class="pia-panel" id="pia-order-review"><h3>Revisión del pedido</h3><small>'+esc(r.source)+'</small><p class="pia-caption" style="margin-top:8px">'+esc(r.sourceNote)+'</p>'+check('pia-data-ok','He revisado datos, nombres, tallas y cortes',r.dataOk,!r.rows.length)+'</section>'+button('Descargar plantilla vacía para cliente','customer-template',false,'download')+button('Importar Excel o Google Sheets','import-order',false,'file-input')+button('Continuar a cotización','cobro',true,'arrow-right')+orderOptions(r));
   }
+  const canManageSupplierPayments=()=>isAdmin()&&!collaborationLocked&&!sharedRevision&&!clientView&&!clientQuote;
+  async function recordSupplierPayment(request){
+    const allowed=()=>canManageSupplierPayments()&&request.source.profile===profile.id;
+    const unchanged=()=>allowed()&&ProwaySyncCore.equal(request.source,ProwaySupplierPayments.snapshot(serializeState(),request.ids));
+    if(!allowed()||busyTasks)throw Error('Espera y entra como administración para registrar pagos.');
+    if(!unchanged())throw Error('Cambió el pedido, una tarifa o un pago. Cierra esta ventana y revisa el importe.');
+    if(request.date>demoDay)throw Error('La fecha del pago no puede ser futura.');
+    const payment=ProwaySupplierPayments.plan(serializeState(),request.ids,request.mode,ProwayExtras.settlement);
+    const entries=ProwaySupplierPayments.paymentEntries(payment,request.date,request.note,()=>crypto.randomUUID());
+    if(expenses.length+entries.length>10000)throw Error('Se alcanzó el límite de egresos.');
+    const beforeExpenses=expenses,beforeActivity=activity;busyTasks++;
+    try{
+      await ProwayPlatform.checkpoint('Antes de registrar pago de trabajos');
+      if(!unchanged())throw Error('Los datos cambiaron mientras se guardaba el respaldo. Revisa el pago otra vez.');
+      expenses=[...expenses,...entries];activity=[...activity];
+      for(const e of entries){const order=orders.find(o=>o.id===e.client);record('Trabajo pagado al taller · '+money(e.amount),'proveedor',order);}
+      try{await ProwayPlatform.flush();}catch(err){expenses=beforeExpenses;activity=beforeActivity;render();throw err;}
+      render();return payment;
+    }finally{busyTasks--;}
+  }
+  async function correctSupplierPayment(request){
+    const allowed=()=>canManageSupplierPayments()&&request.profileId===profile.id;
+    const unchanged=()=>allowed()&&ProwaySyncCore.equal(expenses.find(e=>e.id===request.entry.id),request.entry);
+    if(!allowed()||busyTasks||request.entry.category!==ProwaySupplierPayments.category||!unchanged())throw Error('El pago cambió o no tienes permiso para corregirlo.');
+    const beforeExpenses=expenses,beforeActivity=activity;busyTasks++;
+    try{
+      await ProwayPlatform.checkpoint('Antes de corregir un pago de taller');
+      if(!unchanged())throw Error('El registro cambió mientras se guardaba el respaldo. Revisa Pagados otra vez.');
+      expenses=expenses.filter(e=>e.id!==request.entry.id);activity=[...activity];
+      record('Registro de pago de taller anulado por error · '+money(request.entry.amount),'proveedor',orders.find(o=>o.id===request.entry.client)||o());
+      try{await ProwayPlatform.flush();}catch(err){expenses=beforeExpenses;activity=beforeActivity;render();throw err;}
+      render();
+    }finally{busyTasks--;}
+  }
   function canEditOrder(){return isAdmin()&&!collaborationLocked&&!sharedRevision&&o().quoteStatus==='active'&&!isClosed(o());}
   async function renameOrder(request){
     const r=o(),account=profile.id,name=String(request.name||'').trim(),allowed=()=>canEditOrder()&&r===o()&&account===profile.id&&request.profileId===account&&request.orderId===r.id;
@@ -366,7 +400,7 @@
   // The installed app persists one local workspace; quoted versions remain immutable.
   let appReady=false, restoreStage=null, importedSheets=[], selectedSheet=0, sharedRevision=null, cancelStage=null, checkpointList=null;
   const profile={id:crypto.randomUUID(),name:'Proway'};
-  function serializeState(){return {schemaVersion:1,appVersion:'1.15.0',profile:{...profile},designs,expenses,activeOrderId:o().id,orders,basePrice,productPrices:{...productPrices},cutPrice,rates,shortCosts,issuer,calendar,isrControl,revisions,jobs,exportsMade,activity,nextId,savedAt:new Date().toISOString()};}
+  function serializeState(){return {schemaVersion:1,appVersion:'1.17.0',profile:{...profile},designs,expenses,activeOrderId:o().id,orders,basePrice,productPrices:{...productPrices},cutPrice,rates,shortCosts,issuer,calendar,isrControl,revisions,jobs,exportsMade,activity,nextId,savedAt:new Date().toISOString()};}
   function restoreState(s){
     if(s.profile?.id!==profile.id){bulkPriceDrafts.clear();ProwayDesignBatch.reset();ProwayPersonOrder.reset();ProwayOrderDesigns.reset();ProwayFinance.reset();}
     ProwayPlatform.validateState(s);
@@ -522,7 +556,7 @@
   root.addEventListener('submit',e=>{if(!isAdmin()&&!e.target.closest('#pia-team-dialog')){e.preventDefault();e.stopImmediatePropagation();}},true);
   const appBridge={
     getState:()=>structuredClone(serializeState()),
-    canEditOrder,renameOrder,
+    canEditOrder,renameOrder,canManageSupplierPayments,recordSupplierPayment,correctSupplierPayment,
     openDesignLibrary:()=>{if(!canEditOrder())return;go('pedido');const library=main.querySelector('.pia-art-library');for(let p=library?.parentElement;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;library?.scrollIntoView({block:'start'});},
     apply:s=>{const view={screen,workshop,table,utility,clientView,clientQuote,lastScope,viewingCompleted,active:o().id};const wasReady=appReady;appReady=false;restoreState(structuredClone(s));selected=Math.max(0,orders.findIndex(r=>r.id===view.active));screen=view.screen;workshop=view.workshop;table=view.table;utility=view.utility;clientView=view.clientView;clientQuote=view.clientQuote;lastScope=view.lastScope;viewingCompleted=view.viewingCompleted;render();appReady=wasReady;},
     emptyState:()=>{const s=structuredClone(serializeState());s.orders=[blankOrder('C1','Pedido compartido')];s.basePrice=800;s.cutPrice=10;s.rates=[];s.shortCosts={};s.productPrices=ProwayPricing.defaults(800);s.issuer={name:'',rfc:'',cp:'',regime:'626 · Régimen Simplificado de Confianza',legalType:'PF'};s.isrControl={month:demoDay.slice(0,7),external:{}};s.designs=[];s.expenses=[];for(const k of ['activity','revisions','jobs','exportsMade'])s[k]=[];return s;},
@@ -647,7 +681,7 @@
     if(e.target.id==='pia-refund-form'){e.preventDefault();const amount=Number(root.querySelector('#pia-refund-amount').value),date=root.querySelector('#pia-refund-date').value,note=root.querySelector('#pia-refund-note').value.slice(0,500);if(r.quoteStatus!=='cancelled'||!Number.isFinite(amount)||amount<=0||round(amount)>received(r)||!/^\d{4}-\d{2}-\d{2}$/.test(date)){announce('Revisa fecha e importe. No puedes devolver más dinero del registrado.');return true;}r.refunds.push({id:'REF-'+crypto.randomUUID(),date,amount:round(amount),note});record('Devolución al cliente registrada · '+money(amount),'pagos');render();return true;}
     return false;
   }
-  async function initializeApp(){try{const saved=await ProwayPlatform.load();if(saved)restoreState(saved);ProwayPlatform.bindState(serializeState);let quote,quoteError;try{quote=await ProwayPlatform.readQuote();}catch(err){quoteError=err.message;}if(quote){sharedRevision={source:'cotizacion',client:quote.id,name:quote.name,version:quote.documentVersion||1,issuedAt:quote.issuedAt,quote};clientQuote=true;utility={mode:'preview',source:'cotizacion'};ProwayPlatform.bindState(null);}appReady=true;render();if(quote)ProwayPresentation.bind(appBridge);if(quoteError)announce('No se pudo abrir la cotización: '+quoteError);if(!quote){await ProwayPlatform.flush();ProwayDesignEditor.bind(appBridge);ProwayExtras.bind(appBridge);ProwayFinance.bind(appBridge);ProwayCuts.bind(appBridge);ProwayLabels.bind(appBridge);ProwayDesignBatch.bind(appBridge);ProwayPersonOrder.bind(appBridge);ProwayOrderDesigns.bind(appBridge);ProwayOrderTools.bind(appBridge);ProwayPresentation.bind(appBridge);await ProwayCollaboration.start(appBridge);}ProwayPlatform.install().catch(()=>ProwayPlatform.status('Guardado local activo. La instalación sin conexión requiere una dirección HTTPS válida.'));}catch(err){appReady=false;ProwayPlatform.status('No se pudo abrir la base: '+err.message);render();announce('Conserva tu respaldo. No se sustituyeron los datos de la base.');}}
+  async function initializeApp(){try{const saved=await ProwayPlatform.load();if(saved)restoreState(saved);ProwayPlatform.bindState(serializeState);let quote,quoteError;try{quote=await ProwayPlatform.readQuote();}catch(err){quoteError=err.message;}if(quote){sharedRevision={source:'cotizacion',client:quote.id,name:quote.name,version:quote.documentVersion||1,issuedAt:quote.issuedAt,quote};clientQuote=true;utility={mode:'preview',source:'cotizacion'};ProwayPlatform.bindState(null);}appReady=true;render();if(quote)ProwayPresentation.bind(appBridge);if(quoteError)announce('No se pudo abrir la cotización: '+quoteError);if(!quote){await ProwayPlatform.flush();ProwayDesignEditor.bind(appBridge);ProwayExtras.bind(appBridge);ProwayFinance.bind(appBridge);ProwaySupplierUI.bind(appBridge);ProwayCuts.bind(appBridge);ProwayLabels.bind(appBridge);ProwayDesignBatch.bind(appBridge);ProwayPersonOrder.bind(appBridge);ProwayOrderDesigns.bind(appBridge);ProwayOrderTools.bind(appBridge);ProwayPresentation.bind(appBridge);await ProwayCollaboration.start(appBridge);}ProwayPlatform.install().catch(()=>ProwayPlatform.status('Guardado local activo. La instalación sin conexión requiere una dirección HTTPS válida.'));}catch(err){appReady=false;ProwayPlatform.status('No se pudo abrir la base: '+err.message);render();announce('Conserva tu respaldo. No se sustituyeron los datos de la base.');}}
 
   setInterval(()=>{if(appReady&&ProwayLifecycle.today()!==demoDay&&!appBridge.isBusy())render();},60000);
   initializeApp();

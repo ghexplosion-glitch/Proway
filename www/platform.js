@@ -306,7 +306,7 @@
       }
       const at=label=>'B'+summaries.get(label),mode=at('IVA del proveedor');
       const formula=(label,f)=>{const c=sheet.getCell(at(label));c.value={formula:f,result:c.value};};
-      const total='('+at('Sublimación')+'+'+at('Corte')+')';
+      const gross='('+at('Sublimación')+'+'+at('Corte')+')',total=summaries.has('Pagos base ya registrados')?'MAX(0,'+gross+'-'+at('Pagos base ya registrados')+')':gross;
       formula('Sublimación','IF(COUNT(F'+firstRow+':F'+lastRow+')<ROWS(F'+firstRow+':F'+lastRow+'),"Tarifa pendiente",SUM(H'+firstRow+':H'+lastRow+'))');
       formula('Corte','SUM(I'+firstRow+':I'+lastRow+')');
       formula('Subtotal','IF(ISNUMBER('+at('Sublimación')+'),'+total+',"Pendiente")');

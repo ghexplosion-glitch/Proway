@@ -1,4 +1,6 @@
-# Proway Pedidos 1.16.0
+# Proway Pedidos 1.17.0
+
+La versión 1.17.0 agrega **Marcar como pagado** en Taller sublimación → Pago de trabajos, para un pedido o varios seleccionados. Confirma fecha, referencia y total de un pago ya realizado: se registra un egreso por pedido y los trabajos liquidados salen de Pendientes. Pagados conserva los movimientos y permite corregir una captura errónea con respaldo previo. Los pagos manuales anteriores de Sublimación y corte asociados al pedido también se reconocen. Si crece el costo por prendas, extras o tarifas nuevas, solo la diferencia base vuelve a pendientes. El IVA se agrega sobre ese saldo cuando se selecciona; PDF y Excel descuentan la base ya pagada. Los egresos de pedidos aún no aprobados aparecen en Dinero sin sumar ventas previstas. No se realiza ninguna transferencia bancaria desde la app. El estado usa el registro de egresos existente: funciona sin conexión y se sincroniza con el equipo al conectarse, sin cambiar el esquema de la base.
 
 La versión 1.16.0 agrega **Elegir diseño con imágenes**: busca por nombre y toca una tarjeta con frente y espalda. El mismo selector se abre para grupos de prendas, una persona o un artículo. Elegir en la ventana modifica solo el formulario: guarda la persona o aplica la asignación por lote para confirmar. Se conserva la selección de prendas al elegir el modelo. Las imágenes pendientes se indican y Sin diseño permite retirar la asignación. Cargar o editar diseños abre la biblioteca del mismo pedido.
 
