@@ -120,13 +120,14 @@
     const payment=ProwaySupplierPayments.plan(serializeState(),request.ids,request.mode,ProwayExtras.settlement);
     const entries=ProwaySupplierPayments.paymentEntries(payment,request.date,request.note,()=>crypto.randomUUID());
     if(expenses.length+entries.length>10000)throw Error('Se alcanzó el límite de egresos.');
-    const beforeExpenses=expenses,beforeActivity=activity;busyTasks++;
+    busyTasks++;
     try{
       await ProwayPlatform.checkpoint('Antes de registrar pago de trabajos');
       if(!unchanged())throw Error('Los datos cambiaron mientras se guardaba el respaldo. Revisa el pago otra vez.');
-      expenses=[...expenses,...entries];activity=[...activity];
+      const beforeExpenses=structuredClone(expenses),beforeActivity=structuredClone(activity);
+      expenses.push(...entries);
       for(const e of entries){const order=orders.find(o=>o.id===e.client);record('Trabajo pagado al taller · '+money(e.amount),'proveedor',order);}
-      try{await ProwayPlatform.flush();}catch(err){expenses=beforeExpenses;activity=beforeActivity;render();throw err;}
+      try{await ProwayPlatform.flush();}catch(err){expenses.splice(0,expenses.length,...beforeExpenses);activity.splice(0,activity.length,...beforeActivity);render();throw err;}
       render();return payment;
     }finally{busyTasks--;}
   }
@@ -134,13 +135,14 @@
     const allowed=()=>canManageSupplierPayments()&&request.profileId===profile.id;
     const unchanged=()=>allowed()&&ProwaySyncCore.equal(expenses.find(e=>e.id===request.entry.id),request.entry);
     if(!allowed()||busyTasks||request.entry.category!==ProwaySupplierPayments.category||!unchanged())throw Error('El pago cambió o no tienes permiso para corregirlo.');
-    const beforeExpenses=expenses,beforeActivity=activity;busyTasks++;
+    busyTasks++;
     try{
       await ProwayPlatform.checkpoint('Antes de corregir un pago de taller');
       if(!unchanged())throw Error('El registro cambió mientras se guardaba el respaldo. Revisa Pagados otra vez.');
-      expenses=expenses.filter(e=>e.id!==request.entry.id);activity=[...activity];
+      const beforeExpenses=structuredClone(expenses),beforeActivity=structuredClone(activity);
+      expenses.splice(0,expenses.length,...expenses.filter(e=>e.id!==request.entry.id));
       record('Registro de pago de taller anulado por error · '+money(request.entry.amount),'proveedor',orders.find(o=>o.id===request.entry.client)||o());
-      try{await ProwayPlatform.flush();}catch(err){expenses=beforeExpenses;activity=beforeActivity;render();throw err;}
+      try{await ProwayPlatform.flush();}catch(err){expenses.splice(0,expenses.length,...beforeExpenses);activity.splice(0,activity.length,...beforeActivity);render();throw err;}
       render();
     }finally{busyTasks--;}
   }

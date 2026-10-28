@@ -41,6 +41,7 @@ F.reset();const metrics={records:[],orders:state.orders.map(o=>({id:o.id,name:o.
 let ft=F.totals(state,metrics);
 ok('Paid supplier work from an unapproved quote counts expenses without inventing a sale',ft.orders.length===1&&ft.quoted===0&&ft.cash===0&&ft.expenses===144&&ft.profit===-144);
 ok('Pending proposals keep their quotation totals in the pending tab',F.totals(state,metrics,'pending').quoted===1600);
+const savedRows=state.orders[0].rows;state.orders[0].rows=[];F.reset();ok('Recorded supplier expenses stay in accounting when the garment list is later emptied',F.totals(state,metrics).expenses===144);state.orders[0].rows=savedRows;
 state.expenses=[];F.reset();ok('Correcting an erroneous expense reopens the job',!balance(state.orders[0]).paid&&balance(state.orders[0]).remaining===288);
 const shared={...checkpoint,basePrice:800,productPrices:{Butarga:800,Playera:300,Short:200},issuer:{},calendar:{},isrControl:{},designs:[]};
 const meta={role:'admin',bases:Object.fromEntries(shared.orders.map(o=>[o.id,{version:1,data:structuredClone(o)}])),settingsBase:{version:1,data:C.settings({...shared,expenses:[]})},pending:{}};
