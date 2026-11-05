@@ -321,7 +321,7 @@
   function go(next,department){screen=next;if(department)workshop=department;utility=null;clientView=false;clientQuote=false;resultMessage='';feedback.hidden=true;render();}
   function render(){
     demoDay=ProwayLifecycle.today();
-    if(!viewingCompleted&&!utility&&isClosed(o())&&['inicio','pedido','cobro','taller'].includes(screen)){const open=orders.findIndex(r=>ProwayLifecycle.active(r)&&!isClosed(r));if(open>=0)selected=open;}
+    if(!viewingCompleted&&!utility&&orderScope==='pending'&&(isClosed(o())||o().delivered)&&['inicio','pedido','cobro','taller'].includes(screen)){const next=ordered().find(r=>ProwayLifecycle.active(r)&&!r.delivered&&!isClosed(r));if(next)selected=orders.indexOf(next);}
     if(!isAdmin()){if(['cobro','tablas','dinero'].includes(screen)){screen='taller';workshop=roleWork[accessRole]||'costura';}if(utility&&!allowedSource(utility.source))utility={mode:'preview',source:'listado'};}
     const scope=[selected,utility?utility.mode+':'+utility.source:screen+':'+(screen==='taller'?workshop:screen==='tablas'?table:screen==='dinero'?moneyTab:historyTab),clientView,clientQuote].join('|');
     const same=scope===lastScope;

@@ -78,7 +78,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
     await context.setOffline(true);await page.reload();await app.locator('[data-action="new-order"]').waitFor();
     ok('App starts offline with saved orders',(await saved()).orders.at(-1).rows[0].qty===2);
-    await app.locator('#pia-order').selectOption(String(after.orders.length-1));await nav('cobro');await click('preview-document');await app.locator('[data-format="pdf"]').click();await download('run-export','quote-offline.pdf');ok('PDF export works offline',true);
+    await app.locator('#pia-order-scope').selectOption('all');await app.locator('#pia-order').selectOption(String(after.orders.length-1));await nav('cobro');await click('preview-document');await app.locator('[data-format="pdf"]').click();await download('run-export','quote-offline.pdf');ok('PDF export works offline',true);
     await click('close-document');
     for(const width of [320,390,736]){await page.setViewportSize({width,height:1100});await nav('dinero');await app.locator('[data-money="resico"]').click();const overflow=await page.locator('#proway-pedidos-preview').evaluate(el=>[...el.querySelectorAll('*')].filter(x=>!x.closest('.pia-doc-table-wrap')&&x.getBoundingClientRect().width>0&&x.getBoundingClientRect().right>el.getBoundingClientRect().right+2).length);ok('Mobile layout '+width+'px fits',overflow===0);}
     await page.setViewportSize({width:390,height:1100});await page.screenshot({path:path.join(out,'resico-mobile.png'),fullPage:true});await page.emulateMedia({colorScheme:'dark'});await page.screenshot({path:path.join(out,'resico-dark.png'),fullPage:true});
