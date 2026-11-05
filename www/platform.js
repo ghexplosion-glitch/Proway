@@ -127,6 +127,7 @@
     const seen = new Set(); let rowCount = 0;
     for (const order of value.orders) {
       if (!identifier(order.id) || seen.has(order.id) || !text(order.name,200) || !Array.isArray(order.rows)) throw Error('Identificación de pedido inválida.');
+      if(order.createdAt!==undefined&&!ProwaySyncCore.validCreatedAt(order.createdAt))throw Error('Fecha de alta del pedido inválida.');
       seen.add(order.id); rowCount += order.rows.length;
       for(const key of ['contact','phone','address','orderDate','advanceDate','source','sourceNote'])if(!text(order[key],4000))throw Error('Datos del cliente inválidos.');
       for(const key of ['dataOk','confirmed','designOk','paymentOk','released','sewn','packed','shipped','delivered'])if(typeof order[key]!=='boolean')throw Error('Validación de producción inválida.');
@@ -135,6 +136,7 @@
       if (rowCount>10000 || !number(order.advance) || !number(order.advanceIsr||0) || !['pending','PF','PM'].includes(order.payerType)) throw Error('Importes o tipo fiscal inválidos.');
       if(order.advanceRecord&&(!number(order.advanceRecord.amount)||!number(order.advanceRecord.retention)||!/^\d{4}-\d{2}-\d{2}$/.test(order.advanceRecord.date)))throw Error('Anticipo validado inválido.');
       if (!['none','added','included'].includes(order.vatMode) || !order.images || !image(order.images.front) || !image(order.images.back)) throw Error('IVA o imágenes inválidos.');
+      if(order.shipment.delivery!==undefined){const d=order.shipment.delivery;if(!d||!['personal','paqueteria'].includes(d.method)||!ProwayLifecycle.validDay(d.date)||Object.keys(d).some(k=>!['method','date'].includes(k)))throw Error('Comprobante de entrega inválido.');}
       if(order.quoteStatus!==undefined&&!['active','discarded','cancelled'].includes(order.quoteStatus))throw Error('Estado de cotización inválido.');
       if(!ProwayOperations.validQuality(order.quality,order.rows)||!ProwayOperations.validRefunds(order)||!ProwayOperations.validCancellation(order.cancellation,order.quoteStatus)||!ProwayOperations.validMilestones(order.milestones))throw Error('Calidad, cancelación, devoluciones o fechas inválidas.');
       if(!validShipping(order.shippingQuote)||!validPlans(order.plannedCosts))throw Error('Envío o costos previstos inválidos.');

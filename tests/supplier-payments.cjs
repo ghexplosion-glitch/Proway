@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const S=require('../www/supplier-payments.js'),C=require('../www/collaboration-core.js'),P=require('../www/presentation-order.js');
 const checks=[],ok=(name,result)=>{assert(result,name);checks.push(name);};
-const handlers={},ctx={window:{},Intl,Date,Map,Set,String,Math,Number,Boolean,Array,ProwayPresentation:P,ProwaySupplierPayments:S,document:{getElementById:()=>({addEventListener:(n,fn)=>handlers[n]=fn})}};vm.createContext(ctx);
+const handlers={},ctx={window:{},Intl,Date,Map,Set,String,Math,Number,Boolean,Array,ProwayPresentation:P,ProwaySupplierPayments:S,ProwaySyncCore:C,document:{getElementById:()=>({addEventListener:(n,fn)=>handlers[n]=fn})}};vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(require.resolve('../www/extras.js'),'utf8'),ctx);ctx.ProwayExtras=ctx.window.ProwayExtras;
 vm.runInContext(fs.readFileSync(require.resolve('../www/finance.js'),'utf8'),ctx);const E=ctx.ProwayExtras,F=ctx.window.ProwayFinance;
 const order=(id,qty)=>({id,name:'Prueba '+id,quoteStatus:'active',confirmed:false,payments:[],advanceRecord:null,plannedCosts:{fabric:0,sewing:0,shipping:0,other:0},rows:[{product:'Butarga',size:'1',cut:'Hombre',qty}],supplier:{mode:'none',extras:[]}});

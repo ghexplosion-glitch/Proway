@@ -18,7 +18,29 @@
       const due=stage.key==='delivery'?(o.shipment?.eta||''):businessDue(o.startDate,stage.days);
       if(!due||due>soon)return null;
       return {id:o.id,name:o.name,...stage,due,status:due<day?'Atrasado':due===day?'Vence hoy':'Próximo a vencer'};
-    }).filter(Boolean).sort((a,b)=>a.due.localeCompare(b.due)||a.name.localeCompare(b.name));
+    }).filter(Boolean).sort((a,b)=>a.due.localeCompare(b.due));
+  }
+  const validDay=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T12:00:00Z'))&&new Date(value+'T12:00:00Z').toISOString().slice(0,10)===value;
+  function deliveryAllowed(order,role='admin'){
+    return active(order)&&quantity(order)>0&&!order.delivered&&order.dataOk&&order.confirmed&&(role==='admin'||role==='envio'&&order.packed);
+  }
+  function deliver(order,request,role='admin',day=today()){
+    if(!deliveryAllowed(order,role))throw Error('Revisa y aprueba el pedido antes de confirmar la entrega. Envío necesita el empaque validado.');
+    if(!request.complete)throw Error('Confirma que el cliente recibió el pedido completo.');
+    if(!validDay(request.date)||request.date>day||validDay(order.orderDate)&&request.date<order.orderDate)throw Error('Revisa la fecha de entrega: debe estar entre la fecha del pedido y hoy.');
+    if(!['personal','paqueteria'].includes(request.method))throw Error('Selecciona entrega personal o paquetería.');
+    if(request.method==='paqueteria'&&(!order.shipped||!validDay(order.shipment.date)||request.date<order.shipment.date))throw Error('Valida primero la salida del paquete y revisa la fecha de entrega.');
+    const shipment=structuredClone(order.shipment);shipment.status='Entregado';shipment.delivery={method:request.method,date:request.date};
+    shipment.events=[...shipment.events,{status:'Entregado',date:request.date}];
+    if(shipment.events.length>1000)throw Error('Se alcanzó el límite del historial de envío.');
+    return {delivered:true,shipment};
+  }
+  function reopenDelivery(order,role='admin',day=today()){
+    if(!active(order)||!order.delivered||!['admin','envio'].includes(role)||!validDay(day))throw Error('La entrega ya cambió o no tienes permiso para corregirla.');
+    const shipment=structuredClone(order.shipment);delete shipment.delivery;shipment.status=order.shipped?'Enviado':'Preparación';
+    shipment.events=[...shipment.events,{status:shipment.status,date:day}];
+    if(shipment.events.length>1000)throw Error('Se alcanzó el límite del historial de envío.');
+    return {delivered:false,shipment};
   }
   function repeat(order,fresh,nextRowId,day=today()){
     for(const key of ['name','contact','phone','address','payerType','vatMode','showVat','fiscal','images','additionalDesigns','shippingQuote'])if(order[key]!==undefined)fresh[key]=structuredClone(order[key]);
@@ -38,5 +60,5 @@
     if(!valid(from)||!valid(to)||from>to)throw Error('Revisa las fechas del corte: Desde debe ser anterior o igual a Hasta.');
     return {mode,from,to,label:mode==='week'?'Semanal':mode==='month'?'Mensual':'Personalizado'};
   }
-  return {today,quantity,active,closed,closedDate,nextStage,alerts,repeat,period};
+  return {today,quantity,active,closed,closedDate,nextStage,alerts,repeat,period,validDay,deliveryAllowed,deliver,reopenDelivery};
 });

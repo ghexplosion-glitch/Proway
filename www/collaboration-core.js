@@ -15,6 +15,13 @@
     return keys.length===other.length&&keys.every(k=>Object.hasOwn(b,k)&&equal(a[k],b[k]));
   }
   const clone=x=>structuredClone(x);
+  function validCreatedAt(value){return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;}
+  function entryTime(order){if(validCreatedAt(order.createdAt))return Date.parse(order.createdAt);const day=order.orderDate;if(typeof day==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(day)&&Number.isFinite(Date.parse(day+'T12:00:00Z'))&&new Date(day+'T12:00:00Z').toISOString().slice(0,10)===day)return Date.parse(day+'T12:00:00Z');return null;}
+  function orderedOrders(orders){return orders.map((order,index)=>({order,index,time:entryTime(order)})).sort((a,b)=>{
+    if(a.time!==b.time){if(a.time===null)return -1;if(b.time===null)return 1;return a.time-b.time;}
+    if(a.time!==null)return String(a.order.id).localeCompare(String(b.order.id),'en',{numeric:true});
+    return a.index-b.index;
+  }).map(x=>x.order);}
   const orderDefaults={quoteStatus:'active',shippingQuote:{amount:0,description:''},plannedCosts:{fabric:0,sewing:0,shipping:0,other:0},cancellation:{date:'',reason:''},refunds:[],quality:{counts:{},names:false,design:false,notes:'',checkedAt:''},milestones:{design:'',sewing:'',packing:'',shipping:''}};
   function normalizeOrder(o){return {...clone(orderDefaults),...o,additionalDesigns:o.additionalDesigns||[]};}
   function settings(state){return Object.fromEntries(settingKeys.filter(k=>k!=='productPrices'||state[k]!==undefined).map(k=>[k,clone(state[k]??(['designs','expenses'].includes(k)?[]:null))]));}
@@ -54,7 +61,8 @@
   function stateFrom(baseState,meta){
     const state=clone(baseState),existing=new Map(state.orders.map(o=>[o.id,o]));
     const ids=new Set([...Object.keys(meta.bases),...Object.keys(meta.pending).filter(k=>k!=='settings')]);
-    state.orders=[...ids].sort().map(id=>clone(meta.pending[id]?.desired||meta.bases[id]?.data||existing.get(id))).filter(Boolean);
+    const previous=[...existing.keys()].filter(id=>ids.has(id));
+    state.orders=orderedOrders([...new Set([...previous,...ids])].map(id=>clone(meta.pending[id]?.desired||meta.bases[id]?.data||existing.get(id))).filter(Boolean));
     if(!state.orders.length)state.orders=baseState.orders;
     state.orders=state.orders.map(normalizeOrder);
     if(meta.role==='admin'){const selectedSettings=meta.pending.settings?.desired||meta.settingsBase?.data||settings(state);Object.assign(state,clone(selectedSettings));if(!Object.hasOwn(selectedSettings,'productPrices'))delete state.productPrices;}
@@ -63,5 +71,5 @@
     if(meta.events)state.activity=meta.events.map(e=>({client:e.client||state.orders[0].id,action:(e.actor?e.actor+' · ':'')+e.action,time:e.time,section:'equipo'}));
     return state;
   }
-  return {equal,clone,settings,difference,guardsFor,prepare,rebase,stateFrom,orderDefaults,normalizeOrder};
+  return {equal,clone,settings,difference,guardsFor,prepare,rebase,stateFrom,orderDefaults,normalizeOrder,validCreatedAt,entryTime,orderedOrders};
 });

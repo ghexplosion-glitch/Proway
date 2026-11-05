@@ -13,7 +13,7 @@
       (s.paid?'<p class="pia-help">Este trabajo ya no se incluye en los pagos pendientes. Puedes consultar o corregir el registro en Pagados.</p>':'');
   }
   function history(state){
-    const orders=state.orders.filter(o=>ProwaySupplierPayments.entries(o,state).length);
+    const orders=ProwaySyncCore.orderedOrders(state.orders).filter(o=>ProwaySupplierPayments.entries(o,state).length);
     return '<h3>Pagos de trabajos registrados</h3><p class="pia-help">Conserva fecha, importe y pedido. Si agregas prendas o extras, solo la diferencia de costo vuelve a Pendientes. Los saldos usan las tarifas actuales.</p>'+orders.map(order=>{
       const s=status(order,state);
       return '<details class="pia-supplier-history" data-supplier-history="'+esc(order.id)+'"><summary>'+esc(order.name)+' · '+s.label+' · '+money(s.paidTotal)+'</summary><small>'+esc(order.id)+'</small>'+s.payments.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>'<div class="pia-supplier-payment-row"><div><strong>'+money(e.amount)+' · '+esc(e.date)+'</strong><small>Base '+money(e.baseAmount??e.amount)+' · IVA '+money(e.iva||0)+'</small><small>'+esc(e.note)+'</small></div><button type="button" class="pia-secondary-button" data-supplier-correct="'+esc(e.id)+'">Corregir registro</button></div>').join('')+'</details>';

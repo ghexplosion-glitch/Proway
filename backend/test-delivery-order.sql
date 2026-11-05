@@ -1,0 +1,43 @@
+-- Synthetic accounts only; the whole test transaction is rolled back.
+begin;
+do $$
+declare uid uuid=gen_random_uuid(); w uuid=gen_random_uuid(); d jsonb; saved jsonb; result jsonb; olddata jsonb; rejected boolean; proof jsonb;
+begin
+  insert into auth.users(id,email,email_confirmed_at,is_anonymous,raw_user_meta_data) values(uid,'proway-delivery-test-'||uid::text||'@example.invalid',now(),false,'{}');
+  insert into proway_private.workspaces(id,name,owner_id) values(w,'Synthetic delivery and arrival test',uid);
+  insert into proway_private.members(workspace_id,user_id,role,display_name) values(w,uid,'admin','Synthetic test');
+  insert into proway_private.settings(workspace_id,data) values(w,'{"basePrice":800,"cutPrice":10,"rates":[],"shortCosts":{},"issuer":{"name":"","rfc":"","cp":"","legalType":"PF","regime":"626"},"calendar":{"saturday":false,"extra":""},"isrControl":{"month":"2026-11","external":{}},"designs":[],"expenses":[]}');
+  perform set_config('request.jwt.claim.sub',uid::text,true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',uid,'role','authenticated')::text,true);
+  d='{"id":"ARRIVAL-TEST","name":"Synthetic pickup","createdAt":"2026-10-01T10:00:00.123Z","contact":"","phone":"","address":"","orderDate":"2026-10-01","rows":[{"id":1,"product":"Butarga","size":"M","cut":"Hombre","qty":2,"printed":"TEST","color":"Rojo","design":"","placement":"","special":800,"priceMode":"manual"}],"images":{"front":null,"back":null},"dataOk":true,"confirmed":true,"designOk":false,"advance":0,"advanceDate":"","advanceIsr":0,"advanceCfdi":false,"advanceSimulated":false,"advanceRecord":null,"payments":[],"payerType":"PF","paymentOk":false,"startDate":"","released":false,"sewn":false,"packed":false,"shipped":false,"delivered":false,"source":"Synthetic test","sourceNote":"","vatMode":"none","showVat":false,"supplier":{"mode":"none","extras":[]},"fiscal":{"rfc":"","name":"","cp":"","regime":"","use":"","form":"","method":""},"shipment":{"carrier":"","guide":"","date":"","eta":"","status":"Preparación","events":[]}}';
+  result=public.proway_api('save_order',w,jsonb_build_object('orderId','ARRIVAL-TEST','operationId',gen_random_uuid(),'baseVersion',0,'patch',d,'expected','{}'::jsonb));
+  if result->'data'->>'createdAt'<>'2026-10-01T10:00:00.123Z' then raise exception 'Offline creation time was not retained';end if;
+  saved=result->'data';
+  rejected=false;
+  begin perform public.proway_api('save_order',w,jsonb_build_object('orderId','ARRIVAL-TEST','operationId',gen_random_uuid(),'patch','{"createdAt":"2026-11-01T00:00:00.000Z"}'::jsonb,'expected',jsonb_build_object('createdAt',saved->'createdAt')));exception when sqlstate 'P0001' then rejected=true;end;
+  if not rejected then raise exception 'Creation date was editable';end if;
+  if proway_private.project_order(saved,'diseno')->'createdAt' is distinct from saved->'createdAt' then raise exception 'Department projection lost arrival time';end if;
+  proof=jsonb_build_object('method','personal','date','2026-10-28');olddata=saved;
+  result=public.proway_api('save_order',w,jsonb_build_object('orderId','ARRIVAL-TEST','operationId',gen_random_uuid(),'patch',jsonb_build_object('delivered',true,'shipment',(saved->'shipment')||jsonb_build_object('status','Entregado','delivery',proof)),'expected',jsonb_build_object('delivered',false,'shipment',saved->'shipment')));
+  saved=result->'data';
+  if saved->>'delivered'<>'true' or saved->>'shipped'<>'false' or saved->>'packed'<>'false' or saved->'rows'<>olddata->'rows' or saved->'payments'<>olddata->'payments' or saved->'createdAt'<>olddata->'createdAt' then raise exception 'Pickup changed production flags, money, garments or arrival time';end if;
+  if saved->'shipment'->'events'->0->>'date'<>'2026-10-28' then raise exception 'Delivery used the shipping date instead of the confirmed delivery date';end if;
+  result=public.proway_api('save_order',w,jsonb_build_object('orderId','ARRIVAL-TEST','operationId',gen_random_uuid(),'patch',jsonb_build_object('delivered',false,'shipment',((saved->'shipment')-'delivery')||jsonb_build_object('status','Preparación')),'expected',jsonb_build_object('delivered',true,'shipment',saved->'shipment')));
+  saved=result->'data';
+  if saved->>'delivered'<>'false' or saved->'shipment'->'events'->0->>'status'<>'Entregado' or jsonb_array_length(saved->'shipment'->'events')<>2 then raise exception 'Correcting delivery rewrote the original history';end if;
+  update proway_private.members set role='envio' where workspace_id=w and user_id=uid;
+  rejected=false;
+  begin perform public.proway_api('save_order',w,jsonb_build_object('orderId','ARRIVAL-TEST','operationId',gen_random_uuid(),'patch',jsonb_build_object('delivered',true,'shipment',(saved->'shipment')||jsonb_build_object('status','Entregado','delivery',proof)),'expected',jsonb_build_object('delivered',false,'shipment',saved->'shipment')));exception when sqlstate '42501' then rejected=true;end;
+  if not rejected then raise exception 'Shipping role bypassed packing validation';end if;
+  update proway_private.members set role='admin' where workspace_id=w and user_id=uid;
+  rejected=false;
+  begin perform proway_private.validate_order(d||jsonb_build_object('delivered',true,'shipment',(d->'shipment')||jsonb_build_object('status','Entregado','delivery',jsonb_build_object('method','personal','date','2026-02-31'))));exception when others then rejected=true;end;
+  if not rejected then raise exception 'Invalid delivery date was accepted';end if;
+  rejected=false;
+  begin perform proway_private.validate_order(d||jsonb_build_object('delivered',true,'shipment',(d->'shipment')||jsonb_build_object('status','Entregado','delivery',jsonb_build_object('method','paqueteria','date','2026-10-28'))));exception when others then rejected=true;end;
+  if not rejected then raise exception 'Courier delivery without a shipment was accepted';end if;
+  d=(d-'createdAt')||jsonb_build_object('id','LEGACY-ARRIVAL');
+  result=public.proway_api('save_order',w,jsonb_build_object('orderId','LEGACY-ARRIVAL','operationId',gen_random_uuid(),'baseVersion',0,'patch',d,'expected','{}'::jsonb));
+  if not(result->'data' ? 'createdAt') or result->'data'->>'createdAt'!~ '^\d{4}-\d{2}-\d{2}T' or ((result->'data')-'createdAt')<>d then raise exception 'Legacy client creation changed its business data';end if;
+end $$;
+rollback;
