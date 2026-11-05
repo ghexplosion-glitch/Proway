@@ -587,8 +587,8 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 .pia-delivery-bar{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,1.5fr);gap:10px;padding:0 20px 12px}
 .pia-delivery-bar[hidden]{display:none}
 .pia-delivery-bar select,.pia-delivery-bar button{font:inherit;min-width:0;min-height:48px;border:1px solid #cadbd0;border-radius:12px;padding:10px;background:#fff;color:#224b35}
-.pia-delivery-bar button{background:#176940;border-color:#176940;color:white;font-weight:600;cursor:pointer}
-.pia-delivery-bar button:disabled{background:#eef3ef;color:#617367;border-color:#d9e4dc;cursor:default}
+#pia-offline-app .pia-delivery-bar button{background:#176940;border-color:#176940;color:white;font-weight:600;cursor:pointer}
+#pia-offline-app .pia-delivery-bar button:disabled{background:#eef3ef;color:#617367;border-color:#d9e4dc;cursor:default}
 .pia-delivery-bar small{grid-column:1/-1;font-size:12px;color:#5a7062}
 .pia-delivery-dialog{font-family:system-ui,sans-serif;border:1px solid #d1dfd5;border-radius:20px;padding:22px;width:min(540px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:calc(100dvh - 30px);overflow:auto;box-sizing:border-box;color:#253c2e}
 .pia-delivery-dialog::backdrop{background:rgba(20,40,28,.5)}
@@ -608,4 +608,5 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 .pia-delivery-error{background:#fff0e5;color:#7a3c1a;border-radius:10px;padding:12px}
 .pia-delivery-dialog :focus-visible{outline:3px solid #3a9461;outline-offset:3px}
 @media(max-width:420px){.pia-delivery-bar{padding:0 14px 12px}.pia-delivery-dialog{padding:18px}.pia-delivery-dialog-actions{flex-direction:column}}
+@media(max-width:370px){.pia-delivery-bar{grid-template-columns:minmax(0,1fr)}}
 @media(min-width:1000px){.pia-delivery-bar{grid-template-columns:180px minmax(220px,340px) 1fr;align-items:center}.pia-delivery-bar small{grid-column:auto}}
