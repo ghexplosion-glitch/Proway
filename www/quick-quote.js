@@ -60,7 +60,7 @@
     Object.assign(rev,{id:'REV-'+crypto.randomUUID(),version:last?last.version+1:1,time:new Date().toLocaleTimeString('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit'}),fingerprint});
     await app.saveQuickQuote(rev,draft.profileId);return rev;
   }
-  function reset(){dialog?.close();dialog=null;draft=null;}
+  function reset(){const current=dialog;dialog=null;draft=null;if(current){current.close();current.remove();}}
   function open(rev){
     if(!app.canQuickQuote()||app.isBusy())throw Error('Entra como administración y espera a que termine la tarea actual.');
     if(dialog?.open)return;
