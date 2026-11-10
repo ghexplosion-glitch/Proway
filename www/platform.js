@@ -193,7 +193,7 @@
     if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(clean(title),margin,40);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((['finanzas','corte','diseno_lote'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name+' · v'+rev.version),margin,47);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((['finanzas','corte','diseno_lote'].includes(rev.source)?'Pedidos seleccionados':rev.client)+(rev.source==='cotizacion_rapida'?'':' · '+rev.name)+' · v'+rev.version),margin,47);
     doc.text(new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}),width-margin,18,{align:'right'});}
     let y = 54;
     const line = (label,value,bold=false) => {
@@ -242,6 +242,11 @@
         for(const [n,text] of lines.entries()){const wrapped=doc.splitTextToSize(clean(text),cellW-5).slice(0,n<3?2:1);doc.text(wrapped,x+2.5,labelY);labelY+=3.3*wrapped.length+.7;}
         doc.setFont('helvetica','bold');doc.text(clean((r[8]||rev.client)+' · '+r[0]+' de '+(r[9]??rows.length)),x+2.5,top+cellH-4);
       });
+    } else if(rev.source==='cotizacion_rapida') {
+      paragraphs('Cotización / proforma - Sin timbrar. No es CFDI.\n'+(rev.name==='Cotización rápida'?'':rev.name+'\n')+'Precios en MXN.');
+      doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)?money(v):clean(v))),styles:{font:'helvetica',fontSize:10,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}});
+      y=doc.lastAutoTable.finalY+10;
+      for(const [label,value] of rev.data.summary||[]){if(typeof value==='number')line(label,value,label==='Total de la cotización');else paragraphs(label+': '+value);}
     } else if(rev.source==='diseno_lote') {
       paragraphs('Listado para preparar Diseño. La impresión se libera en cada pedido después de validar pedido, cotización, diseño y anticipo.');
       for(const row of rev.data.summary||[])line(row[0],row[1]);
@@ -284,7 +289,7 @@
       }
     }
     drawArtwork(rev.quote||rev,'',!quote);
-    for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quote){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
+    for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quote||rev.source==='cotizacion_rapida'){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
     return doc.output('blob');
   }
   async function excel(rev,title) {

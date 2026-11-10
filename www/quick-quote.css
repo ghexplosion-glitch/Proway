@@ -1,0 +1,21 @@
+#proway-pedidos-preview .pia-quick-dialog{box-sizing:border-box;width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 32px);margin:auto;padding:24px;border:1px solid #d6e3dc;border-radius:18px;background:#f6f8f7;color:#172d22;overflow-y:auto;overscroll-behavior:contain}
+#proway-pedidos-preview .pia-quick-dialog::backdrop{background:rgb(10 25 18 / .6)}
+#proway-pedidos-preview .pia-quick-dialog h2{margin:0;font-size:24px}
+#proway-pedidos-preview .pia-quick-dialog form{min-width:0}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-head>div{min-width:0;overflow-wrap:anywhere}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-head button{width:auto;flex-shrink:0}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-items{display:grid;gap:16px;margin:18px 0}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-item{min-width:0;padding:18px;border:1px solid #d6e3dc;border-radius:12px;background:#fff}
+#proway-pedidos-preview .pia-quick-dialog .pia-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#proway-pedidos-preview .pia-quick-dialog .pia-field{min-width:0;margin-bottom:12px}
+#proway-pedidos-preview .pia-quick-dialog input,#proway-pedidos-preview .pia-quick-dialog textarea{box-sizing:border-box;width:100%;max-width:100%}
+#proway-pedidos-preview .pia-quick-dialog .pia-check input{width:auto}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-actions button{flex:1;min-width:145px;margin:0}
+#proway-pedidos-preview .pia-quick-dialog #pia-quick-totals{padding:12px 0;border-top:1px solid #d6e3dc;border-bottom:1px solid #d6e3dc;margin-top:18px}
+#proway-pedidos-preview .pia-quick-dialog #pia-quick-totals .pia-account-line:last-child{font-size:20px}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-error{color:#a31a23}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-saved button{display:block;width:100%;text-align:left;overflow-wrap:anywhere;margin:8px 0}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-message textarea{font:14px/1.6 system-ui;white-space:pre-wrap}
+@media(max-width:480px){#proway-pedidos-preview .pia-quick-dialog{padding:16px}#proway-pedidos-preview .pia-quick-dialog .pia-quick-item{padding:12px}#proway-pedidos-preview .pia-quick-dialog .pia-fields{grid-template-columns:minmax(0,1fr)}#proway-pedidos-preview .pia-quick-dialog .pia-quick-actions{display:grid;grid-template-columns:minmax(0,1fr)}}

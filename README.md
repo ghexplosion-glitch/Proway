@@ -1,4 +1,8 @@
-# Proway Pedidos 1.18.0
+# Proway Pedidos 1.18.1
+
+La versión 1.18.1 agrega **Cotización rápida** en Inicio y Cobro para cotizar sin nombres, números, tallas ni cortes. Cada renglón captura producto, deporte, cantidad y precio unitario; admite productos y deportes escritos libremente. Los productos con tarifa toman su precio actual de venta y permiten un ajuste para esa cotización. Un precio vacío queda pendiente; cero es un precio explícito válido. Se calcula el importe y el total con IVA adicional opcional. **Copiar para WhatsApp** prepara el resumen para pegarlo y **Descargar PDF** genera la proforma en Carta. Ninguna acción envía mensajes automáticamente.
+
+**Guardar cotización**, copiar o descargar conservan una versión en el historial de documentos de este dispositivo y cuenta, junto con su folio COT. También se recupera desde Cotizaciones rápidas guardadas; cambiar un importe crea una versión nueva y conserva la anterior. Las cotizaciones rápidas todavía no crean prendas de producción, anticipos ni ventas en Dinero. Los detalles de personalización se capturan al levantar el pedido. El guardado local y los respaldos usan el formato de documentos existente; no se modifica el esquema de la base ni la sincronización.
 
 La versión 1.18.0 agrega **Marcar pedido como entregado** junto al selector de pedido. Confirma entrega personal o paquetería, fecha y recepción completa. Administración puede documentar una entrega personal real sin inventar guía ni validaciones de producción; Envío requiere empaque validado. Los entregados salen de la cola de trabajo y conservan su saldo en Por cobrar. Al liquidarse pasan a Cerrados. Historial → Entregados conserva todas las entregas y Corregir entrega permite volver a pendientes con respaldo y registro del cambio.
 
