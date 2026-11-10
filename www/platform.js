@@ -291,7 +291,7 @@
     if(['etiquetas','etiquetas_lote'].includes(rev.source)){
       const data=rev.data,measurement=new jspdf.jsPDF({unit:'mm',format:'letter'}),plan=ProwayLabels.printPlan(measurement,data,rev.client),labels=wb.addWorksheet('Etiquetas Carta'),offset=data.labelOffset||0,pages=Math.ceil((offset+data.rows.length)/plan.pageSize);
       for(let c=1;c<=4;c++)labels.getColumn(c).width=25;
-      for(let n=1;n<=pages*plan.rows;n++){labels.getRow(n).height=(792-2*plan.margin*72/25.4)/plan.rows;if(n%plan.rows===0&&n<pages*plan.rows)labels.getRow(n).addPageBreak();}
+      for(let n=1;n<=pages*plan.rows;n++){labels.getRow(n).height=Math.floor((792-2*plan.margin*72/25.4)/plan.rows*4)/4-.25;if(n%plan.rows===0&&n<pages*plan.rows)labels.getRow(n).addPageBreak();}
       data.rows.forEach((row,i)=>{const slot=i+offset,cell=labels.getCell(Math.floor(slot/4)+1,slot%4+1),card=plan.cards[i];cell.value={richText:card.wrapped.flatMap((line,j)=>[{text:line.text+(j<card.wrapped.length-1?'\n':''),font:{name:'Arial',size:card.fontSize,bold:line.bold}}])};cell.font={name:'Arial',size:card.fontSize};cell.alignment={vertical:'middle',wrapText:true,indent:1};cell.border={top:{style:'hair'},bottom:{style:'hair'},left:{style:'hair'},right:{style:'hair'}};});
       labels.views=[{showGridLines:false,view:'pageLayout'}];labels.pageSetup={paperSize:1,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:plan.margin/25.4,right:plan.margin/25.4,top:plan.margin/25.4,bottom:plan.margin/25.4,header:0,footer:0},printArea:'A1:D'+Math.max(plan.rows,pages*plan.rows)};
       wb.views=[{activeTab:0}];
