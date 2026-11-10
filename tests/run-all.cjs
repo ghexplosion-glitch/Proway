@@ -1,5 +1,6 @@
 const {spawnSync}=require('node:child_process');
 const files=[
+  "tests/bag-labels.cjs",
   "tests/delivery-order.cjs",
   "tests/delivery-order-browser.cjs",
   "tests/supplier-payments.cjs",

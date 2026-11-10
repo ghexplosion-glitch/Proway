@@ -110,7 +110,9 @@
       Array.isArray(d.money)&&d.money.every(v=>Number.isInteger(v)&&v>=0&&v<30) &&
       (!d.summary||(Array.isArray(d.summary)&&d.summary.length<=50&&d.summary.every(r=>Array.isArray(r)&&r.every(cell)))) &&
       (!d.extraTables||(Array.isArray(d.extraTables)&&d.extraTables.length<=5&&d.extraTables.every(t=>text(t.title,100)&&!t.extraTables&&validDocument(t)))) &&
-      (d.labelOffset===undefined||(Number.isInteger(d.labelOffset)&&d.labelOffset>=0&&d.labelOffset<24));
+      (d.labelPageSize===undefined||[24,40].includes(d.labelPageSize)) &&
+      (d.labelMode===undefined||['product','person'].includes(d.labelMode)) &&
+      (d.labelOffset===undefined||(Number.isInteger(d.labelOffset)&&d.labelOffset>=0&&d.labelOffset<(d.labelPageSize===40?40:24)));
   }
   function validDesignOrders(list){
     if(list===undefined)return true;
@@ -230,17 +232,14 @@
       paragraphs('Plazo aproximado: 20 días hábiles desde el inicio validado, después de aprobar pedido, cotización, diseño y anticipo. Tiempo de paquetería por confirmar.');
       if(q.due)paragraphs('Entrega de producción estimada: '+new Date(q.due+'T12:00:00Z').toLocaleDateString('es-MX',{timeZone:'UTC'}));
     } else if(labels) {
-      const rows=rev.data.rows, cols=4, gap=3, cellW=(width-2*margin-3*gap)/4, cellH=(height-2*margin-5*gap)/6,offset=rev.data.labelOffset||0;
+      const rows=rev.data.rows,plan=ProwayLabels.printPlan(doc,rev.data,rev.client),offset=rev.data.labelOffset||0;
       rows.forEach((r,i)=>{
-        const position=(i+offset)%24;
+        const position=(i+offset)%plan.pageSize;
         if(i>0&&position===0)doc.addPage();
-        const x=margin+(position%cols)*(cellW+gap), top=13+Math.floor(position/cols)*(cellH+gap);
-        doc.setDrawColor(160);doc.rect(x,top,cellW,cellH);
-        const lines=[r[4],r[1]+' / '+r[2]+' / '+r[3],r[5]||'Sin nombre',r[6]||'Color pendiente','Diseño: '+(r[7]||'Pendiente')];
-        doc.setFontSize(8);doc.setFont('helvetica','normal');
-        let labelY=top+4;
-        for(const [n,text] of lines.entries()){const wrapped=doc.splitTextToSize(clean(text),cellW-5).slice(0,n<3?2:1);doc.text(wrapped,x+2.5,labelY);labelY+=3.3*wrapped.length+.7;}
-        doc.setFont('helvetica','bold');doc.text(clean((r[8]||rev.client)+' · '+r[0]+' de '+(r[9]??rows.length)),x+2.5,top+cellH-4);
+        const x=plan.margin+(position%plan.columns)*(plan.cellW+plan.gapX),top=plan.margin+Math.floor(position/plan.columns)*(plan.cellH+plan.gapY),card=plan.cards[i];
+        doc.setDrawColor(185);doc.setLineWidth(.15);doc.rect(x,top,plan.cellW,plan.cellH);doc.setFontSize(card.fontSize);doc.setTextColor(25,40,32);
+        let labelY=top+1.5+card.fontSize*.352778;
+        for(const line of card.wrapped){doc.setFont('helvetica',line.bold?'bold':'normal');doc.text(clean(line.text),x+1.5,labelY);labelY+=card.lineHeight;}
       });
     } else if(rev.source==='diseno_lote') {
       paragraphs('Listado para preparar Diseño. La impresión se libera en cada pedido después de validar pedido, cotización, diseño y anticipo.');
@@ -283,12 +282,20 @@
         y+=imageHeight+16;
       }
     }
-    drawArtwork(rev.quote||rev,'',!quote);
-    for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quote){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
+    if(!labels)drawArtwork(rev.quote||rev,'',!quote);
+    if(!labels)for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quote){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
     return doc.output('blob');
   }
   async function excel(rev,title) {
     const wb=new ExcelJS.Workbook();wb.creator='Proway';wb.created=new Date();
+    if(['etiquetas','etiquetas_lote'].includes(rev.source)){
+      const data=rev.data,measurement=new jspdf.jsPDF({unit:'mm',format:'letter'}),plan=ProwayLabels.printPlan(measurement,data,rev.client),labels=wb.addWorksheet('Etiquetas Carta'),offset=data.labelOffset||0,pages=Math.ceil((offset+data.rows.length)/plan.pageSize);
+      for(let c=1;c<=4;c++)labels.getColumn(c).width=25;
+      for(let n=1;n<=pages*plan.rows;n++){labels.getRow(n).height=(792-2*plan.margin*72/25.4)/plan.rows;if(n%plan.rows===0&&n<pages*plan.rows)labels.getRow(n).addPageBreak();}
+      data.rows.forEach((row,i)=>{const slot=i+offset,cell=labels.getCell(Math.floor(slot/4)+1,slot%4+1),card=plan.cards[i];cell.value={richText:card.wrapped.flatMap((line,j)=>[{text:line.text+(j<card.wrapped.length-1?'\n':''),font:{name:'Arial',size:card.fontSize,bold:line.bold}}])};cell.font={name:'Arial',size:card.fontSize};cell.alignment={vertical:'middle',wrapText:true,indent:1};cell.border={top:{style:'hair'},bottom:{style:'hair'},left:{style:'hair'},right:{style:'hair'}};});
+      labels.views=[{showGridLines:false,view:'pageLayout'}];labels.pageSetup={paperSize:1,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:plan.margin/25.4,right:plan.margin/25.4,top:plan.margin/25.4,bottom:plan.margin/25.4,header:0,footer:0},printArea:'A1:D'+Math.max(plan.rows,pages*plan.rows)};
+      wb.views=[{activeTab:0}];
+    }
     const sheet=wb.addWorksheet('Documento'), d=rev.data;
     sheet.addRow(['','',title]);sheet.addRow(['','',(['finanzas','corte','diseno_lote'].includes(rev.source)?'Pedidos seleccionados':rev.client)+' · '+rev.name]);sheet.addRow(['','','Versión '+rev.version]);
     sheet.mergeCells('A1:B3');

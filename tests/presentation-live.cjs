@@ -33,7 +33,7 @@ try{
   await page.locator('[data-format="excel"]').click();const x=await download('[data-action="run-export"]',source+'.xlsx');ok(source+' filename identifies the customer',x.suggestedFilename().includes('PRUEBA-DE-TALLAS'));
   const sheets=await book(source+'.xlsx');ok(source+' Excel prints all sheets on Letter',sheets.every(x=>x.paper===1));
   const data=source==='cotizacion'?sheets.find(x=>x.name==='Prendas para revisión'):source==='envío'?sheets.find(x=>x.name==='Prendas del envío'):sheets.find(x=>x.name==='Documento');
-  const header=data.rows.findIndex(row=>row?.includes(source==='etiquetas_lote'?'Pieza':'N.º')),xlsRows=data.rows.slice(header+1).filter(row=>typeof row?.[1]==='number');const ni=source==='cotizacion'?7:source==='empaque'?5:source==='etiquetas_lote'?6:6;
+  const header=data.rows.findIndex(row=>row?.includes(source==='etiquetas_lote'?'N.º de etiqueta':'N.º')),xlsRows=data.rows.slice(header+1).filter(row=>typeof row?.[1]==='number');const ni=source==='cotizacion'?7:source==='empaque'?5:source==='etiquetas_lote'?6:6;
   ok(source+' Excel matches preview order',JSON.stringify(xlsRows.slice(0,source==='etiquetas_lote'?13:12).map(x=>x[ni]))===JSON.stringify(source==='etiquetas_lote'?P.pieces(r.rows).map(x=>x.printed):expected));
   if(source==='diseño'){const names=sheets.find(x=>x.name==='Nombres para diseño'),first=names.rows[3];ok('Design name sheet separates original printed number from list sequence',first[1]==='Persona 3'&&first[9]==='02'&&first[10]===1);}
   await page.locator('[data-action="close-document"]').click();
