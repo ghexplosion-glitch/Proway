@@ -1,6 +1,6 @@
 {
   "name": "proway-pedidos",
-  "version": "1.19.1",
+  "version": "1.19.2",
   "private": true,
   "description": "Pedidos textiles sin conexión con colaboración por departamento",
   "scripts": {
