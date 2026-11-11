@@ -248,11 +248,11 @@
       doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(clean(rev.client+' · v'+rev.version),width-margin,26,{align:'right'});doc.text('Fecha de cotización: '+date,width-margin,32,{align:'right'});
       doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,39,width-margin,39);y=47;doc.setTextColor(30,40,50);
       paragraphs([q.get('Emisor')||'Proway',...['RFC','Domicilio','Teléfono','Página web'].filter(k=>q.has(k)).map(k=>k+': '+q.get(k))].join('\n'));
-      paragraphs('Equipo: '+(q.get('Equipo')||rev.name)+'\nCliente: '+(q.get('Cliente')||'Por confirmar')+'\nTipo de cliente: '+(q.get('Tipo de cliente')||'Por confirmar'));
+      paragraphs('Equipo: '+(q.get('Equipo')||rev.name)+'\nCliente: '+(q.get('Cliente')||'Por confirmar'));
       doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)?money(v):clean(v))),styles:{font:'helvetica',fontSize:10,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}});
       y=doc.lastAutoTable.finalY+10;
-      const headerKeys=['Emisor','RFC','Domicilio','Teléfono','Página web','Fecha de cotización','Equipo','Cliente','Tipo de cliente'];
-      for(const [label,value] of rev.data.summary||[]){if(headerKeys.includes(label))continue;if(typeof value==='number')line(label,value,['Total de la cotización','Neto a depositar'].includes(label));else paragraphs(label+': '+value);}
+      const headerKeys=['Emisor','RFC','Domicilio','Teléfono','Página web','Fecha de cotización','Equipo','Cliente','Tipo de cliente','Confirmación pendiente','Nota del diseño'];
+      for(const [label,value] of rev.data.summary||[]){if(headerKeys.includes(label))continue;if(typeof value==='number')line(label,value,['Total de la cotización','Neto a depositar','Total a depositar'].includes(label));else paragraphs(label+': '+value);}
     } else if(rev.source==='diseno_lote') {
       paragraphs('Listado para preparar Diseño. La impresión se libera en cada pedido después de validar pedido, cotización, diseño y anticipo.');
       for(const row of rev.data.summary||[])line(row[0],row[1]);
@@ -292,6 +292,7 @@
           doc.addImage(data,props.fileType,x+(cellW-w)/2,y+4,w,h);
         }
         y+=imageHeight+16;
+        if(quick){doc.setTextColor(180,35,24);paragraphs(new Map(rev.data.summary||[]).get('Nota del diseño')||ProwayQuotePresentation.designNotice);doc.setTextColor(30,40,50);}
       }
     }
     if(!labels)drawArtwork(rev.quote||rev,'',!quote);

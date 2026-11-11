@@ -2,6 +2,7 @@
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.ProwayQuotePresentation=factory();})(globalThis,function(){
   'use strict';
   const defaults={name:'Proway',rfc:'',address:'',phone:'',website:'https://proway.com.mx'};
+  const designNotice='Esta imagen es una propuesta prediseñada de Proway y puede modificarse de acuerdo con las necesidades del cliente.';
   const limits={name:200,rfc:20,address:500,phone:30,website:300};
   function normalizeBrand(value={}){const b={};for(const k of Object.keys(defaults))b[k]=String(value?.[k]??defaults[k]).trim();b.name=b.name||defaults.name;b.rfc=b.rfc.toUpperCase();if(b.website&&!/^https?:\/\//i.test(b.website))b.website='https://'+b.website;return b;}
   function validBrand(b){
@@ -16,5 +17,5 @@
   function revisionDay(rev,today){const s=new Map(rev.data?.summary||[]),day=s.get('Fecha de cotización');if(dayValid(day))return day;if(rev.issuedAt&&Number.isFinite(Date.parse(rev.issuedAt)))return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(rev.issuedAt));return today;}
   function brandFromRevision(rev,current){const s=new Map(rev.data?.summary||[]),b=normalizeBrand(current);for(const [key,label] of [['rfc','RFC'],['address','Domicilio'],['phone','Teléfono'],['website','Página web']])if(s.has(label))b[key]=s.get(label);return normalizeBrand(b);}
   const fingerprint=rev=>JSON.stringify({name:rev.name,data:rev.data,images:rev.images||null,additionalDesigns:rev.additionalDesigns||[]});
-  return {defaults,normalizeBrand,validBrand,brandRows,dayValid,dateText,revisionDay,brandFromRevision,fingerprint};
+  return {defaults,designNotice,normalizeBrand,validBrand,brandRows,dayValid,dateText,revisionDay,brandFromRevision,fingerprint};
 });
