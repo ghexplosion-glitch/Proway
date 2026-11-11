@@ -433,7 +433,7 @@
   // The installed app persists one local workspace; quoted versions remain immutable.
   let appReady=false, restoreStage=null, importedSheets=[], selectedSheet=0, sharedRevision=null, cancelStage=null, checkpointList=null;
   const profile={id:crypto.randomUUID(),name:'Proway'};
-  function serializeState(){return {schemaVersion:1,appVersion:'1.20.0',profile:{...profile},...(quoteBrand?{quoteBrand:{...quoteBrand}}:{}),designs,expenses,activeOrderId:o().id,orders,basePrice,productPrices:{...productPrices},cutPrice,rates,shortCosts,issuer,calendar,isrControl,revisions,jobs,exportsMade,activity,nextId,savedAt:new Date().toISOString()};}
+  function serializeState(){return {schemaVersion:1,appVersion:'1.20.1',profile:{...profile},...(quoteBrand?{quoteBrand:{...quoteBrand}}:{}),designs,expenses,activeOrderId:o().id,orders,basePrice,productPrices:{...productPrices},cutPrice,rates,shortCosts,issuer,calendar,isrControl,revisions,jobs,exportsMade,activity,nextId,savedAt:new Date().toISOString()};}
   function restoreState(s){
     if(s.profile?.id!==profile.id){ProwayQuickQuote.reset();bulkPriceDrafts.clear();ProwayDesignBatch.reset();ProwayPersonOrder.reset();ProwayOrderDesigns.reset();ProwayFinance.reset();}
     ProwayPlatform.validateState(s);quoteBrand=s.quoteBrand?{...s.quoteBrand}:null;

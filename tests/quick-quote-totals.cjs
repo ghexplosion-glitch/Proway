@@ -1,20 +1,22 @@
 const assert=require('node:assert/strict'),{calculate}=require('../www/quick-quote-totals.js');
 let passed=0;const ok=(name,value)=>{assert(value,name);passed++;};
-const pm=calculate(1000,200,'PM',true);
+const pm=calculate(1000,200,true,true);
 assert.deepEqual(pm,{goods:1000,shipping:200,subtotal:1200,iva:192,total:1392,retention:15,net:1377});passed++;
 ok('RESICO retention excludes IVA',pm.retention===15&&pm.retention!==17.4);
-ok('Shipping charged is included in the payment base',pm.retention-calculate(1000,0,'PM',true).retention===2.5);
-const pf=calculate(1000,200,'PF',true);
-ok('Individuals retain no ISR under the corporate rule',pf.retention===0&&pf.net===1392);
-const pending=calculate(1000,200,'pending',false);
-ok('Unknown customer type does not invent a retention',pending.total===1200&&pending.retention===0&&pending.net===1200);
-ok('IVA does not get extracted from the base amount',calculate(1000,200,'PM',false).subtotal===1200);
-const small=calculate(12.34,.67,'PM',true);
+ok('Shipping charged is included in the payment base',pm.retention-calculate(1000,0,true,true).retention===2.5);
+const vatOnly=calculate(1000,200,false,true);
+ok('IVA alone leaves the ISR retention disabled',vatOnly.retention===0&&vatOnly.net===1392);
+const noTax=calculate(1000,200,false,false);
+ok('Unchecked tax options add neither IVA nor ISR',noTax.total===1200&&noTax.retention===0&&noTax.net===1200);
+const isrOnly=calculate(1000,200,true,false);
+ok('ISR works independently without adding IVA',isrOnly.iva===0&&isrOnly.retention===15&&isrOnly.net===1185);
+ok('IVA does not get extracted from the base amount',isrOnly.subtotal===1200);
+const small=calculate(12.34,.67,true,true);
 assert.deepEqual(small,{goods:12.34,shipping:.67,subtotal:13.01,iva:2.08,total:15.09,retention:.16,net:14.93});passed++;
-const half=calculate(.4,0,'PM',true);
+const half=calculate(.4,0,true,true);
 ok('A half-cent ISR rounds to the nearest cent',half.retention===.01&&half.net===.45);
-const empty=calculate(0,0,'PM',true);
+const empty=calculate(0,0,true,true);
 ok('Explicit zero amounts remain valid',Object.values(empty).every(n=>n===0));
 ok('All rounded figures reconcile to the net deposit',Math.round(pm.total*100)-Math.round(pm.retention*100)===Math.round(pm.net*100));
-for(const args of [[1000,-1,'PM',true],[1000,NaN,'PM',true],[Infinity,0,'PM',true],[1000000000,1,'PF',false],[1000000000,0,'PF',true],[1000,0,'other',true],[1000,0,'PM','true']]){assert.throws(()=>calculate(...args));passed++;}
+for(const args of [[1000,-1,true,true],[1000,NaN,true,true],[Infinity,0,true,true],[1000000000,1,false,false],[1000000000,0,false,true],[1000,0,'PM',true],[1000,0,true,'true']]){assert.throws(()=>calculate(...args));passed++;}
 console.log(JSON.stringify({area:'quick-quote-totals',passed}));

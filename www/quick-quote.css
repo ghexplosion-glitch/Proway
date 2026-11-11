@@ -37,4 +37,5 @@
 #proway-pedidos-preview .pia-quick-dialog .pia-quick-art figure{min-width:0;margin:0;padding:10px;background:#fff;border-radius:9px}
 #proway-pedidos-preview .pia-quick-dialog .pia-quick-art img{width:100%;height:180px;object-fit:contain}
 #proway-pedidos-preview .pia-quick-dialog .pia-quick-art figcaption{font-size:12px;margin:8px 0}
+#proway-pedidos-preview .pia-quick-dialog .pia-quick-design-notice{color:#b42318;font-size:13px;line-height:1.6;margin:14px 0;overflow-wrap:anywhere}
 @media(max-width:480px){#proway-pedidos-preview .pia-quick-dialog{padding:16px}#proway-pedidos-preview .pia-quick-dialog .pia-quick-item{padding:12px}#proway-pedidos-preview .pia-quick-dialog .pia-fields{grid-template-columns:minmax(0,1fr)}#proway-pedidos-preview .pia-quick-dialog .pia-quick-actions{display:grid;grid-template-columns:minmax(0,1fr)}}
