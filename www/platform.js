@@ -245,7 +245,7 @@
       paragraphs('Cotización / proforma - Sin timbrar. No es CFDI.\n'+(rev.name==='Cotización rápida'?'':rev.name+'\n')+'Precios en MXN.');
       doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)?money(v):clean(v))),styles:{font:'helvetica',fontSize:10,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}});
       y=doc.lastAutoTable.finalY+10;
-      for(const [label,value] of rev.data.summary||[]){if(typeof value==='number')line(label,value,label==='Total de la cotización');else paragraphs(label+': '+value);}
+      for(const [label,value] of rev.data.summary||[]){if(typeof value==='number')line(label,value,['Total de la cotización','Neto a depositar'].includes(label));else paragraphs(label+': '+value);}
     } else if(rev.source==='diseno_lote') {
       paragraphs('Listado para preparar Diseño. La impresión se libera en cada pedido después de validar pedido, cotización, diseño y anticipo.');
       for(const row of rev.data.summary||[])line(row[0],row[1]);

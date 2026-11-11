@@ -9,8 +9,8 @@
 #proway-pedidos-preview .pia-quick-dialog .pia-quick-item{min-width:0;padding:18px;border:1px solid #d6e3dc;border-radius:12px;background:#fff}
 #proway-pedidos-preview .pia-quick-dialog .pia-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 #proway-pedidos-preview .pia-quick-dialog .pia-field{display:flex;flex-direction:column;gap:6px;min-width:0;margin-bottom:12px;font-size:13px;font-weight:600}
-#proway-pedidos-preview .pia-quick-dialog input,#proway-pedidos-preview .pia-quick-dialog textarea{box-sizing:border-box;width:100%;max-width:100%;min-height:44px;padding:10px 12px;border:1px solid #b8d6c4;border-radius:8px;background:#ecf7ef;color:#172d22;font:15px/1.4 system-ui,sans-serif}
-#proway-pedidos-preview .pia-quick-dialog input:focus,#proway-pedidos-preview .pia-quick-dialog textarea:focus{outline:2px solid #19784c;outline-offset:2px}
+#proway-pedidos-preview .pia-quick-dialog input,#proway-pedidos-preview .pia-quick-dialog textarea,#proway-pedidos-preview .pia-quick-dialog select{box-sizing:border-box;width:100%;max-width:100%;min-height:44px;padding:10px 12px;border:1px solid #b8d6c4;border-radius:8px;background:#ecf7ef;color:#172d22;font:15px/1.4 system-ui,sans-serif}
+#proway-pedidos-preview .pia-quick-dialog input:focus,#proway-pedidos-preview .pia-quick-dialog textarea:focus,#proway-pedidos-preview .pia-quick-dialog select:focus{outline:2px solid #19784c;outline-offset:2px}
 #proway-pedidos-preview .pia-quick-dialog button{min-height:42px;padding:10px 14px;border:1px solid #b8cfc0;border-radius:9px;background:#fff;color:#174c32;font:600 14px/1.4 system-ui,sans-serif;cursor:pointer}
 #proway-pedidos-preview .pia-quick-dialog button:disabled{opacity:.5;cursor:default}
 #proway-pedidos-preview .pia-quick-dialog button.pia-primary{border-color:#176940;background:#176940;color:#fff}
