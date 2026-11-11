@@ -64,10 +64,12 @@
     Object.assign(rev,{id:'REV-'+crypto.randomUUID(),version:last?last.version+1:1,time:new Date().toLocaleTimeString('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit'}),fingerprint});
     await app.saveQuickQuote(rev,draft.profileId);return rev;
   }
-  function reset(){const current=dialog;dialog=null;draft=null;if(current){current.close();current.remove();}}
+  function close(){const current=dialog;dialog=null;if(current){current.close();current.remove();}}
+  function reset(){close();draft=null;}
   function open(rev){
     if(!app.canQuickQuote()||app.isBusy())throw Error('Entra como administración y espera a que termine la tarea actual.');
     if(dialog?.open)return;
+    dialog?.remove();dialog=null;
     if(rev)read(rev);else if(!draft||draft.profileId!==app.getState().profile.id)draft=fresh();
     dialog=document.createElement('dialog');dialog.className='pia-quick-dialog';dialog.setAttribute('aria-label','Cotización rápida');
     const current=dialog;dialog.addEventListener('close',()=>{current.remove();if(dialog===current)dialog=null;});
@@ -86,7 +88,7 @@
       const b=e.target.closest('button');if(!b)return;e.stopPropagation();if(busy||b.disabled)return;
       if(!allowed())return reset();
       const action=b.dataset.quickAction;
-      if(action==='close'){dialog.close();return;}
+      if(action==='close'){close();return;}
       if(action==='new'){draft=fresh();paint();return;}
       if(action==='add'){if(draft.items.length>=100){status('Usa hasta 100 productos por cotización.',true);return;}const sport=draft.items.at(-1)?.sport||'';draft.items.push({...item(),sport});paint();dialog.querySelector('#pia-quick-product-'+(draft.items.length-1)).focus();return;}
       if(b.dataset.quickRemove!==undefined){draft.items.splice(Number(b.dataset.quickRemove),1);paint();status('Cambios sin guardar.');return;}
