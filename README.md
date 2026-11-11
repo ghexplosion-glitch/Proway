@@ -1,4 +1,8 @@
-# Proway Pedidos 1.19.2
+# Proway Pedidos 1.20.0
+
+La versión 1.20.0 presenta el documento como **Cotización**, con RFC y datos comerciales de Proway, fecha de cotización editable, equipo y cliente por separado. El régimen fiscal no aparece en el documento del cliente; el cálculo de IVA y retención se conserva. RFC, domicilio, teléfono y web se configuran en **Datos de Proway** y se sincronizan como configuración privada de administración. Los datos personales reales no se incluyen en el código público. El servidor admite el campo opcional `quoteBrand` con el instalador `backend/proway-quote-presentation.sql`; los clientes anteriores conservan esa configuración aunque no conozcan el nuevo campo.
+
+**Diseño previo de Proway o imagen** permite elegir los modelos rojo/azul originales, un diseño guardado del catálogo o del pedido activo, y cargar frente o espalda desde el dispositivo. El PDF incorpora las imágenes de referencia; el texto para WhatsApp identifica el diseño. La fecha, equipo, cliente, datos de contacto y archivos quedan en cada versión guardada. Cambiar la imagen genera una versión nueva sin alterar las anteriores ni las prendas, cantidades, tarifas o cobros.
 
 La versión 1.19.2 incorpora **Tipo de cliente** y **Envío cobrado al cliente** a Cotización rápida. Proway se identifica como persona física en RESICO (626); el comprador puede ser persona física, persona moral o quedar pendiente de confirmar. Elegir persona moral activa inicialmente el IVA adicional y calcula la retención de ISR del **1.25% sobre el subtotal sin IVA**, incluido el envío cobrado, con total antes de retenciones y neto a depositar. El IVA conserva su control explícito. Elegir persona física quita la retención de persona moral. El cálculo corresponde a venta de prendas; no agrega retención de IVA por servicios profesionales.
 

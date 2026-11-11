@@ -153,6 +153,7 @@
         for (const key of ['printed','color','design','placement']) if (!text(r[key]||'',500)) throw Error('Datos de prenda inválidos.');
       }
     }
+    if(value.quoteBrand!==undefined&&!ProwayQuotePresentation.validBrand(value.quoteBrand))throw Error('Datos de Proway inválidos.');
     if(value.productPrices!==undefined&&(!value.productPrices||typeof value.productPrices!=='object'||Array.isArray(value.productPrices)||Object.keys(value.productPrices).length!==3||!['Butarga','Playera','Short'].every(p=>Object.hasOwn(value.productPrices,p)&&(value.productPrices[p]===null||number(value.productPrices[p])))))throw Error('Precios por producto inválidos.');
     if (!number(value.basePrice) || !number(value.cutPrice) || !Array.isArray(value.rates) || value.rates.length>500) throw Error('Tarifas inválidas.');
     for (const r of value.rates) if (!['Butarga','Playera'].includes(r.product)||!['Hombre','Mujer','*'].includes(r.cut)||!text(r.size,30)||!number(r.cost)) throw Error('Tarifa de sublimación inválida.');
@@ -189,10 +190,10 @@
   const money = x => new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(x);
   function logoData(){const img=document.getElementById('pia-proway-logo');if(!img?.naturalWidth)throw Error('El logo aún no está disponible. Reintenta la descarga.');const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}
   function pdf(rev,logo,title) {
-    const quote = rev.source==='cotizacion', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
+    const quote = rev.source==='cotizacion', quick=rev.source==='cotizacion_rapida', labels = ['etiquetas','etiquetas_lote'].includes(rev.source);
     const doc = new jspdf.jsPDF({orientation:!quote&&!labels&&(rev.data.heads.length>6||(rev.data.extraTables||[]).some(t=>t.heads.length>6))?'landscape':'portrait',unit:'mm',format:'letter'});
     const width = doc.internal.pageSize.getWidth(), height = doc.internal.pageSize.getHeight(), margin = 13;
-    if(!labels){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
+    if(!labels&&!quick){doc.addImage(logoData(),'PNG',margin,11,58,18.5);
     doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,34,width-margin,34);
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(clean(title),margin,40);
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(clean((['finanzas','corte','diseno_lote'].includes(rev.source)?'Pedidos seleccionados':rev.client)+(rev.source==='cotizacion_rapida'?'':' · '+rev.name)+' · v'+rev.version),margin,47);
@@ -241,11 +242,17 @@
         let labelY=top+1.5+card.fontSize*.352778;
         for(const line of card.wrapped){doc.setFont('helvetica',line.bold?'bold':'normal');doc.text(clean(line.text),x+1.5,labelY);labelY+=card.lineHeight;}
       });
-    } else if(rev.source==='cotizacion_rapida') {
-      paragraphs('Cotización / proforma - Sin timbrar. No es CFDI.\n'+(rev.name==='Cotización rápida'?'':rev.name+'\n')+'Precios en MXN.');
+    } else if(quick) {
+      const q=new Map(rev.data.summary||[]),chosen=q.get('Fecha de cotización'),date=ProwayQuotePresentation.dateText(chosen)||new Date(rev.issuedAt||Date.now()).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'});
+      doc.addImage(logoData(),'PNG',margin,11,58,18.5);doc.setTextColor(23,65,43);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Cotización',width-margin,18,{align:'right'});
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(clean(rev.client+' · v'+rev.version),width-margin,26,{align:'right'});doc.text('Fecha de cotización: '+date,width-margin,32,{align:'right'});
+      doc.setDrawColor(23,105,64);doc.setLineWidth(.8);doc.line(margin,39,width-margin,39);y=47;doc.setTextColor(30,40,50);
+      paragraphs([q.get('Emisor')||'Proway',...['RFC','Domicilio','Teléfono','Página web'].filter(k=>q.has(k)).map(k=>k+': '+q.get(k))].join('\n'));
+      paragraphs('Equipo: '+(q.get('Equipo')||rev.name)+'\nCliente: '+(q.get('Cliente')||'Por confirmar')+'\nTipo de cliente: '+(q.get('Tipo de cliente')||'Por confirmar'));
       doc.autoTable({startY:y,margin:{left:margin,right:margin,bottom:18},head:[rev.data.heads.map(clean)],body:rev.data.rows.map(r=>r.map((v,i)=>rev.data.money.includes(i)?money(v):clean(v))),styles:{font:'helvetica',fontSize:10,cellPadding:3,overflow:'linebreak'},headStyles:{fillColor:[23,105,64]},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}});
       y=doc.lastAutoTable.finalY+10;
-      for(const [label,value] of rev.data.summary||[]){if(typeof value==='number')line(label,value,['Total de la cotización','Neto a depositar'].includes(label));else paragraphs(label+': '+value);}
+      const headerKeys=['Emisor','RFC','Domicilio','Teléfono','Página web','Fecha de cotización','Equipo','Cliente','Tipo de cliente'];
+      for(const [label,value] of rev.data.summary||[]){if(headerKeys.includes(label))continue;if(typeof value==='number')line(label,value,['Total de la cotización','Neto a depositar'].includes(label));else paragraphs(label+': '+value);}
     } else if(rev.source==='diseno_lote') {
       paragraphs('Listado para preparar Diseño. La impresión se libera en cada pedido después de validar pedido, cotización, diseño y anticipo.');
       for(const row of rev.data.summary||[])line(row[0],row[1]);
@@ -288,7 +295,7 @@
       }
     }
     if(!labels)drawArtwork(rev.quote||rev,'',!quote);
-    if(!labels)for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quote||rev.source==='cotizacion_rapida'){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
+    if(!labels)for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110);if(quick){const q=new Map(rev.data.summary||[]),website=q.get('Página web')||'https://proway.com.mx',phone=q.get('Teléfono')||'';let validUrl;try{const u=new URL(website);if(['http:','https:'].includes(u.protocol)&&!u.username&&!u.password)validUrl=u;}catch{}if(validUrl)doc.textWithLink(validUrl.hostname,margin,height-8,{url:validUrl.href});else doc.text(clean(website),margin,height-8);if(phone)doc.textWithLink('Tel. '+clean(phone),margin+62,height-8,{url:'tel:'+phone.replace(/[^+0-9]/g,'')});}else if(quote){doc.textWithLink('proway.com.mx',margin,height-8,{url:'https://proway.com.mx'});doc.textWithLink('WhatsApp: 33 1007 9695',margin+48,height-8,{url:'https://wa.me/523310079695'});}else doc.text('Proway · Documento de trabajo',margin,height-8);doc.text(p+' / '+doc.getNumberOfPages(),width-margin,height-8,{align:'right'});}
     return doc.output('blob');
   }
   async function excel(rev,title) {
