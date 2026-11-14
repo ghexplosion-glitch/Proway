@@ -112,6 +112,7 @@
       (!d.extraTables||(Array.isArray(d.extraTables)&&d.extraTables.length<=5&&d.extraTables.every(t=>text(t.title,100)&&!t.extraTables&&validDocument(t)))) &&
       (d.labelPageSize===undefined||[24,40].includes(d.labelPageSize)) &&
       (d.labelMode===undefined||['product','person'].includes(d.labelMode)) &&
+      (d.labelStyle===undefined||d.labelStyle==='name') &&
       (d.labelOffset===undefined||(Number.isInteger(d.labelOffset)&&d.labelOffset>=0&&d.labelOffset<(d.labelPageSize===40?40:24)));
   }
   function validDesignOrders(list){

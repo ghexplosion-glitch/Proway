@@ -1,4 +1,6 @@
-# Proway Pedidos 1.20.0
+# Proway Pedidos 1.21.0
+
+La versión 1.21.0 imprime solo **Etiqueta N** y el **nombre impreso** en cada etiqueta de bolsa, con letra más grande. La numeración comienza en 1 para cada pedido, también en lotes de varios clientes. Cambiar de pedido selecciona ese pedido y reinicia el uso de una hoja empezada. PDF, vista previa y la pestaña Etiquetas Carta del Excel usan los mismos dos datos y conservan 4 columnas × 10 filas. La pestaña Documento conserva el detalle editable de prendas, cantidades, tallas, cortes, colores y folios. Los documentos históricos mantienen el formato con el que se emitieron. No modifica pedidos, pagos ni producción y no requiere cambios del servidor.
 
 La versión 1.20.0 presenta el documento como **Cotización**, con RFC y datos comerciales de Proway, fecha de cotización editable, equipo y cliente por separado. El régimen fiscal no aparece en el documento del cliente; el cálculo de IVA y retención se conserva. RFC, domicilio, teléfono y web se configuran en **Datos de Proway** y se sincronizan como configuración privada de administración. Los datos personales reales no se incluyen en el código público. El servidor admite el campo opcional `quoteBrand` con el instalador `backend/proway-quote-presentation.sql`; los clientes anteriores conservan esa configuración aunque no conozcan el nuevo campo.
 

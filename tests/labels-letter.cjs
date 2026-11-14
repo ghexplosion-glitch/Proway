@@ -31,24 +31,24 @@ function letterPdf(file,pages,labels){
   await page.locator('[data-screen="taller"]').click();await page.locator('[data-work="etiquetas"]').click();await page.locator('[data-labels-action="all"]').click();
   ok('All 62 labels are visible in the app before exporting',await page.locator('.pia-label[data-label-index]').count()===62&&await page.locator('.pia-label[data-label-index]').last().isVisible());
   ok('Complete preview is already expanded',await page.locator('details[open]>summary').filter({hasText:'Ver todas las etiquetas'}).count()===1);
-  ok('Two numbered Carta pages include both clients',await page.locator('.pia-label-page').count()===2&&(await page.locator('.pia-label').first().innerText()).includes('Sonora ficticio')&&(await page.locator('.pia-label').last().innerText()).includes('Jaguares ficticio')&&(await page.locator('.pia-label').last().innerText()).includes('Etiqueta 62'));
+  ok('Two numbered Carta pages include both clients',await page.locator('.pia-label-page').count()===2&&(await page.locator('.pia-label').first().innerText()).includes('LUISA PRUEBA')&&(await page.locator('.pia-label').last().innerText()).includes('ANA PRUEBA')&&(await page.locator('.pia-label').last().innerText()).includes('Etiqueta 27'));
   ok('Discarded, cancelled and empty orders are excluded from label selection',await page.locator('[data-labels-order="C3"]').count()===0&&await page.locator('[data-labels-order="C4"]').count()===0&&await page.locator('[data-labels-order="C5"]').isDisabled()&&(await page.locator('#pia-labels-total').innerText())==='62');
   for(const width of [320,390,1024]){await page.setViewportSize({width,height:1100});ok('Complete label view fits '+width+'px',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
   await page.setViewportSize({width:390,height:1100});await page.locator('.pia-label-page').first().screenshot({path:path.join(out,'labels-letter-mobile.png')});
   await page.locator('.pia-label-options>summary').click();await page.locator('#pia-labels-start').selectOption({value:'5'});
   await page.waitForFunction(()=>document.querySelectorAll('.pia-label-used').length===5);
   ok('Used positions do not hide or remove new labels',await page.locator('.pia-label-used').count()===5&&await page.locator('.pia-label[data-label-index]').count()===62&&(await page.locator('.pia-label[data-label-index]').first().innerText()).includes('Etiqueta 1')&&!((await page.locator('.pia-label[data-label-index]').first().innerText()).includes('Posición')));
-  ok('Last Carta page keeps the final label number without printing a position',await page.locator('.pia-label-page').count()===2&&(await page.locator('.pia-label[data-label-index]').last().innerText()).includes('Etiqueta 62'));
+  ok('Last Carta page keeps the final label number without printing a position',await page.locator('.pia-label-page').count()===2&&(await page.locator('.pia-label[data-label-index]').last().innerText()).includes('Etiqueta 27'));
   await page.locator('[data-labels-action="preview"]').click();
   ok('Document preview also shows every label and used position',await page.locator('.pia-label[data-label-index]').count()===62&&await page.locator('.pia-label-used').count()===5&&await page.locator('.pia-label-page').count()===2);
   await page.locator('[data-action="close-document"]').click();
   const downloaded=await download('[data-labels-action="pdf"]','labels-letter.pdf');
   ok('Batch filename identifies both customers',downloaded.suggestedFilename().includes('Sonora-ficticio-Jaguares-ficticio'));
   const batchPdf=letterPdf('labels-letter.pdf',2,62);
-  ok('Batch PDF includes each client and the final garment',batchPdf.includes('Sonora ficticio')&&batchPdf.includes('Jaguares ficticio')&&batchPdf.includes('C2')&&batchPdf.includes('Etiqueta 62'));
+  ok('Batch PDF prints only the intended names and restarts numbering for the second customer',batchPdf.includes('LUISA PRUEBA')&&batchPdf.includes('ANA PRUEBA')&&!batchPdf.includes('Sonora ficticio')&&!batchPdf.includes('Jaguares ficticio')&&batchPdf.includes('Etiqueta 27')); 
   await download('[data-labels-action="excel"]','labels-letter.xlsx');const workbook=await book('labels-letter.xlsx'),rows=workbook.find(s=>s.name==='Documento').rows.filter(r=>r?.[2]==='Butarga'||r?.[2]==='Playera');
   ok('Every label workbook sheet is configured for Carta printing',workbook.length===3&&workbook.every(s=>s.paperSize===1));
-  ok('Excel preserves all labels, names, colors and individual totals',rows.length===62&&rows[34][1]===35&&rows[34][5]==='Sonora ficticio'&&rows[34][6]==='LUISA PRUEBA'&&rows[34][7]==='Rojo'&&rows[34][10]===1&&rows[61][1]===62&&rows[61][5]==='Jaguares ficticio'&&rows[61][6]==='ANA PRUEBA'&&rows[61][7]==='Azul'&&rows[61][10]===1);
+  ok('Excel preserves all labels, names, colors and individual totals',rows.length===62&&rows[34][1]===35&&rows[34][5]==='Sonora ficticio'&&rows[34][6]==='LUISA PRUEBA'&&rows[34][7]==='Rojo'&&rows[34][10]===1&&rows[35][1]===1&&rows[61][1]===27&&rows[61][5]==='Jaguares ficticio'&&rows[61][6]==='ANA PRUEBA'&&rows[61][7]==='Azul'&&rows[61][10]===1);
   await page.locator('[data-labels-action="preview"]').click();await page.locator('#pia-doc-source').selectOption('etiquetas');
   ok('Single-order preview includes all 35 labels on one Carta page',await page.locator('.pia-label[data-label-index]').count()===35&&await page.locator('.pia-label-page').count()===1&&await page.locator('.pia-label-used').count()===0&&(await page.locator('.pia-label').last().innerText()).includes('Etiqueta 35'));
   await download('[data-action="run-export"]','labels-single-letter.pdf');const singlePdf=letterPdf('labels-single-letter.pdf',1,35);

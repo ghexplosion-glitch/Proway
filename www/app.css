@@ -616,3 +616,6 @@ html{color-scheme:light}body{margin:0;background:light-dark(#eef1f4,#141b22);fon
 @media(min-width:1000px){.pia-delivery-bar{grid-template-columns:180px minmax(220px,340px) 1fr;align-items:center}.pia-delivery-bar small{grid-column:auto}}
 
 @media(min-width:1200px){#pia-offline-app .pia-document-content .pia-labels,#pia-offline-app .pia-work-content .pia-labels{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+#pia-offline-app .pia-label-name{min-height:64px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+#pia-offline-app .pia-label-name>strong{font-size:18px;line-height:1.3;margin:0}
